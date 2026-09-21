@@ -251,9 +251,9 @@ def fetch_option_chain_live(index_name):
     except Exception as e:
         return None
         def parse_option_chain(df):
-    """Normalize option chain data to standard columns."""
-    if df is None or df.empty:
-        return None
+            """Normalize option chain data to standard columns."""
+            if df is None or df.empty:
+                return None
     df = df.copy()
     df.columns = [str(c).strip().lower().replace(' ', '_') for c in df.columns]
     

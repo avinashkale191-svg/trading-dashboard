@@ -1,0 +1,39 @@
+name: Fetch NSE Option Chain
+
+on:
+  schedule:
+    # Every 10 minutes during Indian market hours
+    # IST = UTC + 5:30
+    # 9:15 AM IST = 3:45 UTC | 3:30 PM IST = 10:00 UTC
+    # So we run from 4:00 UTC to 9:50 UTC, Mon-Fri
+    - cron: '*/10 4-9 * * 1-5'
+  workflow_dispatch:  # Allows manual trigger from the Actions tab
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: pip install requests pandas
+      
+      - name: Fetch option chain
+        run: python fetch_option_chain.py
+      
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add option_chain_*.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update option chain $(date +'%Y-%m-%d %H:%M')"
+          git push

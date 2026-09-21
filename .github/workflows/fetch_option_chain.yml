@@ -34,6 +34,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add option_chain_*.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update option chain $(date +'%Y-%m-%d %H:%M')"
-          git push
+                    if ls option_chain_*.json 1> /dev/null 2>&1; then
+            git add option_chain_*.json
+            git diff --quiet && git diff --staged --quiet || git commit -m "Update option chain $(date +'%Y-%m-%d %H:%M')"
+            git push
+            echo "✅ Data committed and pushed"
+          else
+            echo "⚠️ No option chain files found — market likely closed. Skipping commit."
+          fi

@@ -17,7 +17,7 @@ except Exception:
 st.set_page_config(page_title="Trading Dashboard", page_icon="📈", layout="wide")
 
 # =========================================================================
-# AUTO-REFRESH MECHANISM
+# AUTO-REFRESH
 # =========================================================================
 if 'refresh_counter' not in st.session_state:
     st.session_state['refresh_counter'] = 0
@@ -116,22 +116,24 @@ if manual_ticker.strip() != "":
 
 st.sidebar.caption("Examples: AAPL, ^GSPC, GC=F, BTC-USD, RELIANCE.NS")
 
-# --- TIMEFRAME ---
+# --- TIMEFRAME (with valid periods only) ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("⏱️ Timeframe")
 interval = st.sidebar.selectbox("Interval", ["1m", "5m", "15m", "30m", "1h", "1d"], index=4)
 
+# Only show VALID periods for each interval (yfinance limits)
 interval_limits = {
     "1m":  ["1d", "5d"],
-    "5m":  ["1d", "5d", "1mo"],
-    "15m": ["1d", "5d", "1mo", "3mo"],
-    "30m": ["1d", "5d", "1mo", "3mo"],
-    "1h":  ["1d", "5d", "1mo", "3mo", "6mo", "1y"],
+    "5m":  ["5d", "1mo"],
+    "15m": ["5d", "1mo", "3mo"],
+    "30m": ["5d", "1mo", "3mo"],
+    "1h":  ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
     "1d":  ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"],
 }
-available_periods = interval_limits.get(interval, ["1mo", "3mo", "6mo"])
-period = st.sidebar.selectbox("Period", available_periods, index=min(2, len(available_periods)-1))
-st.sidebar.caption(f"⚠️ Max history for {interval}: {available_periods[-1]}")
+available_periods = interval_limits.get(interval, ["1mo", "3mo"])
+default_period_idx = min(1, len(available_periods) - 1)
+period = st.sidebar.selectbox("Period", available_periods, index=default_period_idx)
+st.sidebar.caption(f"✅ Valid: {', '.join(available_periods)}")
 
 show_last_n = st.sidebar.slider("Bars to show (zoom)", 30, 500, 150, step=10)
 
@@ -143,7 +145,19 @@ sma_fast = st.sidebar.slider("SMA Fast", 5, 50, 20)
 sma_slow = st.sidebar.slider("SMA Slow", 20, 200, 50)
 pivot_len = st.sidebar.slider("S/R Pivot Length", 3, 30, 10)
 smc_pivot = st.sidebar.slider("SMC Pivot Length", 3, 30, 5)
-trend_pivot = st.sidebar.slider("Trend Line Pivot Length", 3, 30, 8)
+
+# --- Auto-adjust trend pivot ---
+auto_trend_pivot = {
+    "1m": 5, "5m": 5, "15m": 6, "30m": 6, "1h": 8, "1d": 10
+}.get(interval, 8)
+
+trend_pivot = st.sidebar.slider(
+    "Trend Line Pivot Length",
+    3, 30,
+    value=auto_trend_pivot,
+    help="Auto-set based on timeframe."
+)
+st.sidebar.caption(f"📌 Auto for {interval}: {auto_trend_pivot}")
 
 # --- Overlays ---
 st.sidebar.markdown("---")
@@ -153,7 +167,7 @@ show_smc = st.sidebar.checkbox("SMC Liquidity (BSL/SSL)", value=True)
 show_bos = st.sidebar.checkbox("BOS / CHoCH", value=True)
 show_sma = st.sidebar.checkbox("Moving Averages", value=True)
 show_trendlines = st.sidebar.checkbox("Auto Trend Lines", value=True)
-extend_trendlines = st.sidebar.checkbox("Extend Trend Lines into Future", value=True)
+extend_trendlines = st.sidebar.checkbox("Extend Trend Lines", value=True)
 
 # =========================================================================
 # DATA FETCH
@@ -258,13 +272,16 @@ def find_bos(df, pivot_len=5):
     return events[-10:]
 
 def find_trend_lines(df, pivot_len=8):
-    """Find auto trend lines from last 2 swing highs and last 2 swing lows."""
+    """Auto trend lines. Works on any timeframe."""
     highs = df['High'].values
     lows = df['Low'].values
     dates = df['Date'].values
     
     swing_highs = []
     swing_lows = []
+    
+    if len(df) < pivot_len * 3:
+        return []
     
     for i in range(pivot_len, len(df) - pivot_len):
         if highs[i] == highs[i-pivot_len:i+pivot_len+1].max():
@@ -275,22 +292,28 @@ def find_trend_lines(df, pivot_len=8):
     trend_lines = []
     
     if len(swing_highs) >= 2:
-        h1 = swing_highs[-2]
-        h2 = swing_highs[-1]
-        trend_lines.append({
-            'type': 'resistance',
-            'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
-            'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
-        })
+        for offset in range(0, min(3, len(swing_highs) - 1)):
+            h1 = swing_highs[-(2 + offset)]
+            h2 = swing_highs[-(1 + offset)]
+            if abs(h2['idx'] - h1['idx']) >= 3:
+                trend_lines.append({
+                    'type': 'resistance',
+                    'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
+                    'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
+                })
+                break
     
     if len(swing_lows) >= 2:
-        l1 = swing_lows[-2]
-        l2 = swing_lows[-1]
-        trend_lines.append({
-            'type': 'support',
-            'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
-            'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
-        })
+        for offset in range(0, min(3, len(swing_lows) - 1)):
+            l1 = swing_lows[-(2 + offset)]
+            l2 = swing_lows[-(1 + offset)]
+            if abs(l2['idx'] - l1['idx']) >= 3:
+                trend_lines.append({
+                    'type': 'support',
+                    'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
+                    'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
+                })
+                break
     
     return trend_lines
 
@@ -320,14 +343,63 @@ def calc_trend(df, sma_f, sma_s):
     else: return "SIDEWAYS", "#ffaa00", score
 
 # =========================================================================
-# FETCH AND PROCESS
+# FETCH WITH AUTO-CORRECTION
 # =========================================================================
 df = fetch_data(ticker_symbol, period, interval, st.session_state['refresh_counter'])
+
+# Auto-retry with alternative periods if first attempt fails
 if df is None or len(df) < 20:
-    st.error(f"⚠️ Could not fetch data for **{ticker_symbol}** at {interval}/{period}.")
-    st.info("Try a different interval/period. For NIFTY 50 use `1d` or `1h`.")
+    retry_periods = {
+        "1m":  ["5d", "1d"],
+        "5m":  ["5d", "1mo"],
+        "15m": ["5d", "1mo", "3mo"],
+        "30m": ["5d", "1mo", "3mo"],
+        "1h":  ["1mo", "5d", "3mo", "6mo"],
+        "1d":  ["3mo", "6mo", "1y", "1mo"],
+    }
+    
+    for alt_period in retry_periods.get(interval, ["1mo", "3mo"]):
+        if alt_period == period:
+            continue
+        df = fetch_data(ticker_symbol, alt_period, interval, st.session_state['refresh_counter'])
+        if df is not None and len(df) >= 20:
+            st.warning(f"⚠️ Auto-adjusted period from `{period}` to `{alt_period}` for {interval} interval.")
+            period = alt_period
+            break
+
+# If still no data, try a totally different interval as last resort
+if df is None or len(df) < 20:
+    fallback_intervals = ["1d", "1h", "15m", "5m"]
+    for alt_interval in fallback_intervals:
+        if alt_interval == interval:
+            continue
+        alt_period = {"1d": "6mo", "1h": "1mo", "15m": "5d", "5m": "5d"}.get(alt_interval, "1mo")
+        df = fetch_data(ticker_symbol, alt_period, alt_interval, st.session_state['refresh_counter'])
+        if df is not None and len(df) >= 20:
+            st.warning(f"⚠️ Auto-switched from `{interval}` to `{alt_interval}` interval for this asset.")
+            interval = alt_interval
+            period = alt_period
+            break
+
+if df is None or len(df) < 20:
+    st.error(f"❌ Could not fetch data for **{ticker_symbol}** at any timeframe.")
+    st.info("""
+    **Possible reasons:**
+    - Market is closed (Indian market: 9:15 AM - 3:30 PM IST)
+    - Symbol is invalid or delisted
+    - Yahoo Finance doesn't have data for this asset
+    - Internet/network issue
+    
+    **Try:**
+    - A different asset from the dropdown
+    - `NIFTY 50` with `1h` interval
+    - `RELIANCE` with `1d` interval
+    """)
     st.stop()
 
+# =========================================================================
+# PROCESS
+# =========================================================================
 st.session_state['last_update_str'] = datetime.now().strftime('%H:%M:%S')
 
 df['RSI'] = calc_rsi(df['Close'], rsi_period)
@@ -365,7 +437,7 @@ st.markdown(
     📊 MARKET TREND: {trend_label}
     </span>
     <span style="color:#aaa;font-size:14px;margin-left:20px;">
-    Score: {trend_score:+d} · SMA20: {sma_f:.2f} · SMA50: {sma_s:.2f}
+    Score: {trend_score:+d} | Interval: {interval} | Period: {period}
     </span></div>""",
     unsafe_allow_html=True
 )
@@ -389,7 +461,6 @@ with tab1:
                         vertical_spacing=0.02,
                         subplot_titles=("", "RSI", "Order Flow"))
     
-    # --- Candles ---
     fig.add_trace(go.Candlestick(
         x=df_display['Date'], open=df_display['Open'], high=df_display['High'],
         low=df_display['Low'], close=df_display['Close'], name="Price",
@@ -398,19 +469,15 @@ with tab1:
         line=dict(width=1)
     ), row=1, col=1)
     
-    # --- SMAs ---
     if show_sma:
         fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['SMA_Fast'],
                                  name=f"SMA{sma_fast}", line=dict(color='#00aaff', width=1.5)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['SMA_Slow'],
                                  name=f"SMA{sma_slow}", line=dict(color='#ff8800', width=1.5)), row=1, col=1)
     
-    # --- Trend Lines (Extended into future) ---
     if show_trendlines and trend_lines:
         for tl in trend_lines:
             color = '#ff4444' if tl['type'] == 'resistance' else '#00ff88'
-            
-            # Direction-based dash style
             slope_up = tl['y2'] > tl['y1']
             if tl['type'] == 'resistance':
                 dash_style = 'solid' if not slope_up else 'dot'
@@ -418,19 +485,12 @@ with tab1:
                 dash_style = 'solid' if slope_up else 'dot'
             
             if extend_trendlines:
-                # Compute slope (price per bar)
                 idx_diff = tl['idx2'] - tl['idx1']
-                if idx_diff != 0:
-                    slope = (tl['y2'] - tl['y1']) / idx_diff
-                else:
-                    slope = 0
-                
-                # Extend 20 bars into the future
+                slope = (tl['y2'] - tl['y1']) / idx_diff if idx_diff != 0 else 0
                 future_bars = 20
                 future_idx = len(df) - 1 + future_bars
                 y_future = tl['y2'] + slope * (future_idx - tl['idx2'])
                 
-                # Date for future point: use last date + future_bars intervals
                 last_date = df['Date'].iloc[-1]
                 if len(df) > 5:
                     avg_delta = (df['Date'].iloc[-1] - df['Date'].iloc[-5]) / 4
@@ -445,10 +505,9 @@ with tab1:
                     name=f"{tl['type'].title()} Trend",
                     line=dict(color=color, width=2, dash=dash_style),
                     showlegend=False,
-                    hovertemplate=f"{tl['type'].title()}: {tl['y1']:.2f} → {y_future:.2f}<extra></extra>"
+                    hovertemplate=f"{tl['type'].title()}: {tl['y1']:.2f} -> {y_future:.2f}<extra></extra>"
                 ), row=1, col=1)
                 
-                # Add annotation for the projected price
                 fig.add_annotation(
                     x=future_date, y=y_future, xref='x', yref='y',
                     text=f"{tl['type'].title()[:3]} {y_future:.2f}",
@@ -457,7 +516,6 @@ with tab1:
                     bgcolor='#000000'
                 )
             else:
-                # Just 2-point connection
                 fig.add_trace(go.Scatter(
                     x=[tl['date1'], tl['date2']],
                     y=[tl['y1'], tl['y2']],
@@ -465,10 +523,8 @@ with tab1:
                     name=f"{tl['type'].title()} Trend",
                     line=dict(color=color, width=2, dash=dash_style),
                     showlegend=False,
-                    hovertemplate=f"{tl['type'].title()}: {tl['y1']:.2f} → {tl['y2']:.2f}<extra></extra>"
                 ), row=1, col=1)
     
-    # --- S/R lines ---
     if show_sr:
         for lvl in res_levels[-5:]:
             fig.add_shape(type='line', xref='x', yref='y',
@@ -485,7 +541,6 @@ with tab1:
                                text=f"S {lvl['price']:.2f}", showarrow=False, xanchor='left',
                                font=dict(color='#00ff88', size=10), bgcolor='#000000')
     
-    # --- SMC Liquidity ---
     if show_smc:
         for lvl in bsl[-5:]:
             color = '#ffaa00' if lvl['eq'] else '#ff6666'
@@ -500,7 +555,6 @@ with tab1:
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color=color, width=1, dash=dash))
     
-    # --- BOS markers ---
     if show_bos:
         for evt in bos_events:
             if evt['bar'] >= bars_offset:
@@ -512,19 +566,16 @@ with tab1:
                                              mode='markers', marker=dict(color=color, size=10, symbol=symbol),
                                              showlegend=False), row=1, col=1)
     
-    # --- RSI subplot ---
     fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['RSI'],
                              name="RSI", line=dict(color='#ffaa00', width=1.5)), row=2, col=1)
     fig.add_hline(y=70, line=dict(color='#ff4444', width=1, dash='dot'), row=2, col=1)
     fig.add_hline(y=30, line=dict(color='#00ff88', width=1, dash='dot'), row=2, col=1)
     fig.add_hline(y=50, line=dict(color='#666', width=1), row=2, col=1)
     
-    # --- Order Flow subplot ---
     of_colors = ['#ff4444' if v < 0 else '#00ff88' for v in df_display['OrderFlow'].fillna(0)]
     fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['OrderFlow'],
                          name="Order Flow", marker_color=of_colors), row=3, col=1)
     
-    # --- Layout ---
     fig.update_layout(height=800, template="plotly_dark",
                       paper_bgcolor='#131722', plot_bgcolor='#131722',
                       font=dict(color='#d1d4dc', size=11),
@@ -537,8 +588,6 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True, config={
         'scrollZoom': True, 'displayModeBar': True, 'displaylogo': False
     })
-    
-    st.caption("💡 Trends: Solid red = descending resistance | Solid green = ascending support | Dotted = weak/reversing")
 
 # -------------------------------------------------------------------------
 # TAB 2: SMC
@@ -597,8 +646,5 @@ with tab3:
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# =========================================================================
-# FOOTER
-# =========================================================================
 st.markdown("---")
 st.caption(f"Last update: {st.session_state['last_update_str']} | Data by Yahoo Finance")

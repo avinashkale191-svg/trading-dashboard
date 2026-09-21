@@ -19,7 +19,6 @@ st.set_page_config(page_title="Trading Dashboard", page_icon="📈", layout="wid
 # =========================================================================
 # AUTO-REFRESH MECHANISM
 # =========================================================================
-# Increment a counter in session state every time refresh is triggered
 if 'refresh_counter' not in st.session_state:
     st.session_state['refresh_counter'] = 0
 
@@ -33,30 +32,22 @@ st.title("📈 Global Trading & Smart Money Dashboard")
 # =========================================================================
 st.sidebar.header("⚙️ Settings")
 
-# --- REFRESH CONTROLS ---
 st.sidebar.markdown("### 🔄 Data Refresh")
 auto_refresh = st.sidebar.checkbox("Auto-refresh (every 30s)", value=False)
 if st.sidebar.button("🔄 Manual Refresh Now", use_container_width=True):
     trigger_refresh()
     st.rerun()
 
-# Show last update time
-if 'last_update' not in st.session_state:
-    st.session_state['last_update'] = datetime.now()
-    st.session_state['last_update_str'] = st.session_state['last_update'].strftime('%H:%M:%S')
+if 'last_update_str' not in st.session_state:
+    st.session_state['last_update_str'] = datetime.now().strftime('%H:%M:%S')
 
 st.sidebar.caption(f"Last update: **{st.session_state['last_update_str']}**")
 
-# Auto-refresh mechanism
 if auto_refresh:
-    import time
-    # Use a placeholder to trigger re-run after 30 seconds
     st.markdown(
         """
         <script>
-        setTimeout(function() {
-            window.location.reload();
-        }, 30000);
+        setTimeout(function() { window.location.reload(); }, 30000);
         </script>
         """,
         unsafe_allow_html=True
@@ -152,6 +143,7 @@ sma_fast = st.sidebar.slider("SMA Fast", 5, 50, 20)
 sma_slow = st.sidebar.slider("SMA Slow", 20, 200, 50)
 pivot_len = st.sidebar.slider("S/R Pivot Length", 3, 30, 10)
 smc_pivot = st.sidebar.slider("SMC Pivot Length", 3, 30, 5)
+trend_pivot = st.sidebar.slider("Trend Line Pivot Length", 3, 30, 8)
 
 # --- Overlays ---
 st.sidebar.markdown("---")
@@ -160,9 +152,11 @@ show_sr = st.sidebar.checkbox("Support / Resistance", value=True)
 show_smc = st.sidebar.checkbox("SMC Liquidity (BSL/SSL)", value=True)
 show_bos = st.sidebar.checkbox("BOS / CHoCH", value=True)
 show_sma = st.sidebar.checkbox("Moving Averages", value=True)
+show_trendlines = st.sidebar.checkbox("Auto Trend Lines", value=True)
+extend_trendlines = st.sidebar.checkbox("Extend Trend Lines into Future", value=True)
 
 # =========================================================================
-# DATA FETCH (No cache — manual refresh controls it)
+# DATA FETCH
 # =========================================================================
 def fetch_data(symbol, period, interval, refresh_key):
     try:
@@ -180,7 +174,7 @@ def fetch_data(symbol, period, interval, refresh_key):
                 return None
         df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
         return df
-    except Exception as e:
+    except Exception:
         return None
 
 # =========================================================================
@@ -263,6 +257,43 @@ def find_bos(df, pivot_len=5):
             last_low = None
     return events[-10:]
 
+def find_trend_lines(df, pivot_len=8):
+    """Find auto trend lines from last 2 swing highs and last 2 swing lows."""
+    highs = df['High'].values
+    lows = df['Low'].values
+    dates = df['Date'].values
+    
+    swing_highs = []
+    swing_lows = []
+    
+    for i in range(pivot_len, len(df) - pivot_len):
+        if highs[i] == highs[i-pivot_len:i+pivot_len+1].max():
+            swing_highs.append({'idx': i, 'price': float(highs[i]), 'date': dates[i]})
+        if lows[i] == lows[i-pivot_len:i+pivot_len+1].min():
+            swing_lows.append({'idx': i, 'price': float(lows[i]), 'date': dates[i]})
+    
+    trend_lines = []
+    
+    if len(swing_highs) >= 2:
+        h1 = swing_highs[-2]
+        h2 = swing_highs[-1]
+        trend_lines.append({
+            'type': 'resistance',
+            'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
+            'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
+        })
+    
+    if len(swing_lows) >= 2:
+        l1 = swing_lows[-2]
+        l2 = swing_lows[-1]
+        trend_lines.append({
+            'type': 'support',
+            'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
+            'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
+        })
+    
+    return trend_lines
+
 def calc_trend(df, sma_f, sma_s):
     if len(df) < 55:
         return "INSUFFICIENT DATA", "gray", 0
@@ -297,7 +328,6 @@ if df is None or len(df) < 20:
     st.info("Try a different interval/period. For NIFTY 50 use `1d` or `1h`.")
     st.stop()
 
-# Update timestamp
 st.session_state['last_update_str'] = datetime.now().strftime('%H:%M:%S')
 
 df['RSI'] = calc_rsi(df['Close'], rsi_period)
@@ -308,6 +338,7 @@ df['SMA_Slow'] = df['Close'].rolling(sma_slow).mean()
 res_levels, sup_levels = find_sr(df, pivot_len)
 bsl, ssl = find_smc(df, smc_pivot)
 bos_events = find_bos(df, smc_pivot)
+trend_lines = find_trend_lines(df, trend_pivot)
 
 latest = df.iloc[-1]
 prev = df.iloc[-2] if len(df) > 1 else latest
@@ -358,6 +389,7 @@ with tab1:
                         vertical_spacing=0.02,
                         subplot_titles=("", "RSI", "Order Flow"))
     
+    # --- Candles ---
     fig.add_trace(go.Candlestick(
         x=df_display['Date'], open=df_display['Open'], high=df_display['High'],
         low=df_display['Low'], close=df_display['Close'], name="Price",
@@ -366,12 +398,77 @@ with tab1:
         line=dict(width=1)
     ), row=1, col=1)
     
+    # --- SMAs ---
     if show_sma:
         fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['SMA_Fast'],
                                  name=f"SMA{sma_fast}", line=dict(color='#00aaff', width=1.5)), row=1, col=1)
         fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['SMA_Slow'],
                                  name=f"SMA{sma_slow}", line=dict(color='#ff8800', width=1.5)), row=1, col=1)
     
+    # --- Trend Lines (Extended into future) ---
+    if show_trendlines and trend_lines:
+        for tl in trend_lines:
+            color = '#ff4444' if tl['type'] == 'resistance' else '#00ff88'
+            
+            # Direction-based dash style
+            slope_up = tl['y2'] > tl['y1']
+            if tl['type'] == 'resistance':
+                dash_style = 'solid' if not slope_up else 'dot'
+            else:
+                dash_style = 'solid' if slope_up else 'dot'
+            
+            if extend_trendlines:
+                # Compute slope (price per bar)
+                idx_diff = tl['idx2'] - tl['idx1']
+                if idx_diff != 0:
+                    slope = (tl['y2'] - tl['y1']) / idx_diff
+                else:
+                    slope = 0
+                
+                # Extend 20 bars into the future
+                future_bars = 20
+                future_idx = len(df) - 1 + future_bars
+                y_future = tl['y2'] + slope * (future_idx - tl['idx2'])
+                
+                # Date for future point: use last date + future_bars intervals
+                last_date = df['Date'].iloc[-1]
+                if len(df) > 5:
+                    avg_delta = (df['Date'].iloc[-1] - df['Date'].iloc[-5]) / 4
+                    future_date = last_date + avg_delta * future_bars
+                else:
+                    future_date = last_date
+                
+                fig.add_trace(go.Scatter(
+                    x=[tl['date1'], future_date],
+                    y=[tl['y1'], y_future],
+                    mode='lines',
+                    name=f"{tl['type'].title()} Trend",
+                    line=dict(color=color, width=2, dash=dash_style),
+                    showlegend=False,
+                    hovertemplate=f"{tl['type'].title()}: {tl['y1']:.2f} → {y_future:.2f}<extra></extra>"
+                ), row=1, col=1)
+                
+                # Add annotation for the projected price
+                fig.add_annotation(
+                    x=future_date, y=y_future, xref='x', yref='y',
+                    text=f"{tl['type'].title()[:3]} {y_future:.2f}",
+                    showarrow=False, xanchor='left',
+                    font=dict(color=color, size=10),
+                    bgcolor='#000000'
+                )
+            else:
+                # Just 2-point connection
+                fig.add_trace(go.Scatter(
+                    x=[tl['date1'], tl['date2']],
+                    y=[tl['y1'], tl['y2']],
+                    mode='lines',
+                    name=f"{tl['type'].title()} Trend",
+                    line=dict(color=color, width=2, dash=dash_style),
+                    showlegend=False,
+                    hovertemplate=f"{tl['type'].title()}: {tl['y1']:.2f} → {tl['y2']:.2f}<extra></extra>"
+                ), row=1, col=1)
+    
+    # --- S/R lines ---
     if show_sr:
         for lvl in res_levels[-5:]:
             fig.add_shape(type='line', xref='x', yref='y',
@@ -388,6 +485,7 @@ with tab1:
                                text=f"S {lvl['price']:.2f}", showarrow=False, xanchor='left',
                                font=dict(color='#00ff88', size=10), bgcolor='#000000')
     
+    # --- SMC Liquidity ---
     if show_smc:
         for lvl in bsl[-5:]:
             color = '#ffaa00' if lvl['eq'] else '#ff6666'
@@ -402,6 +500,7 @@ with tab1:
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color=color, width=1, dash=dash))
     
+    # --- BOS markers ---
     if show_bos:
         for evt in bos_events:
             if evt['bar'] >= bars_offset:
@@ -413,16 +512,19 @@ with tab1:
                                              mode='markers', marker=dict(color=color, size=10, symbol=symbol),
                                              showlegend=False), row=1, col=1)
     
+    # --- RSI subplot ---
     fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['RSI'],
                              name="RSI", line=dict(color='#ffaa00', width=1.5)), row=2, col=1)
     fig.add_hline(y=70, line=dict(color='#ff4444', width=1, dash='dot'), row=2, col=1)
     fig.add_hline(y=30, line=dict(color='#00ff88', width=1, dash='dot'), row=2, col=1)
     fig.add_hline(y=50, line=dict(color='#666', width=1), row=2, col=1)
     
+    # --- Order Flow subplot ---
     of_colors = ['#ff4444' if v < 0 else '#00ff88' for v in df_display['OrderFlow'].fillna(0)]
     fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['OrderFlow'],
                          name="Order Flow", marker_color=of_colors), row=3, col=1)
     
+    # --- Layout ---
     fig.update_layout(height=800, template="plotly_dark",
                       paper_bgcolor='#131722', plot_bgcolor='#131722',
                       font=dict(color='#d1d4dc', size=11),
@@ -435,6 +537,8 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True, config={
         'scrollZoom': True, 'displayModeBar': True, 'displaylogo': False
     })
+    
+    st.caption("💡 Trends: Solid red = descending resistance | Solid green = ascending support | Dotted = weak/reversing")
 
 # -------------------------------------------------------------------------
 # TAB 2: SMC

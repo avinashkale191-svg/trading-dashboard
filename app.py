@@ -6,6 +6,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 import yfinance as yf
 import io
+import requests as http_requests
 
 try:
     from nselib import derivatives, capital_market
@@ -229,24 +230,27 @@ def calc_trend(df, sma_f, sma_s):
 # =========================================================================
 # OPTION CHAIN FUNCTIONS
 # =========================================================================
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=180)
 def fetch_option_chain_live(index_name):
-    """Try to fetch live option chain from NSE."""
-    if not NSELIB_AVAILABLE:
+    """Read option chain from GitHub-hosted JSON (auto-updated by GitHub Actions every 10 min)."""
+    try:
+        url = f"https://raw.githubusercontent.com/avinashkale191-svg/trading-dashboard/main/option_chain_{index_name.lower()}.json"
+        r = http_requests.get(url, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            rows = data.get('strikes', [])
+            if rows:
+                df = pd.DataFrame(rows)
+                st.session_state['oc_meta'] = {
+                    'fetched_at': data.get('fetched_at', 'unknown'),
+                    'underlying': data.get('underlying', 0),
+                    'expiry': data.get('expiry', 'unknown'),
+                }
+                return df
         return None
-    # Try different function names (nselib versions vary)
-    for func_name in ['nse_live_option_chain', 'nse_option_chain_data', 'get_option_chain']:
-        if hasattr(derivatives, func_name):
-            try:
-                func = getattr(derivatives, func_name)
-                df = func(symbol=index_name)
-                if df is not None and not df.empty:
-                    return df
-            except Exception:
-                continue
-    return None
-
-def parse_option_chain(df):
+    except Exception as e:
+        return None
+        def parse_option_chain(df):
     """Normalize option chain data to standard columns."""
     if df is None or df.empty:
         return None

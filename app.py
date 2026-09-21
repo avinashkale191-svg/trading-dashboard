@@ -15,95 +15,156 @@ except Exception:
     NSELIB_AVAILABLE = False
 
 st.set_page_config(page_title="Trading Dashboard", page_icon="📈", layout="wide")
+
+# =========================================================================
+# AUTO-REFRESH MECHANISM
+# =========================================================================
+# Increment a counter in session state every time refresh is triggered
+if 'refresh_counter' not in st.session_state:
+    st.session_state['refresh_counter'] = 0
+
+def trigger_refresh():
+    st.session_state['refresh_counter'] += 1
+
 st.title("📈 Global Trading & Smart Money Dashboard")
 
 # =========================================================================
 # SIDEBAR
 # =========================================================================
-st.sidebar.header("Settings")
+st.sidebar.header("⚙️ Settings")
+
+# --- REFRESH CONTROLS ---
+st.sidebar.markdown("### 🔄 Data Refresh")
+auto_refresh = st.sidebar.checkbox("Auto-refresh (every 30s)", value=False)
+if st.sidebar.button("🔄 Manual Refresh Now", use_container_width=True):
+    trigger_refresh()
+    st.rerun()
+
+# Show last update time
+if 'last_update' not in st.session_state:
+    st.session_state['last_update'] = datetime.now()
+    st.session_state['last_update_str'] = st.session_state['last_update'].strftime('%H:%M:%S')
+
+st.sidebar.caption(f"Last update: **{st.session_state['last_update_str']}**")
+
+# Auto-refresh mechanism
+if auto_refresh:
+    import time
+    # Use a placeholder to trigger re-run after 30 seconds
+    st.markdown(
+        """
+        <script>
+        setTimeout(function() {
+            window.location.reload();
+        }, 30000);
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
+
+st.sidebar.markdown("---")
+
+# --- ASSET DROPDOWN ---
+st.sidebar.subheader("📊 Select Asset")
 
 asset_options = {
     "--- INDIAN INDICES ---": None,
     "NIFTY 50": "^NSEI",
     "SENSEX": "^BSESN",
     "BANK NIFTY": "^NSEBANK",
+    "INDIA VIX": "^INDIAVIX",
     "--- INDIAN STOCKS ---": None,
     "RELIANCE": "RELIANCE.NS",
     "TCS": "TCS.NS",
     "INFY": "INFY.NS",
     "HDFCBANK": "HDFCBANK.NS",
     "SBIN": "SBIN.NS",
+    "ITC": "ITC.NS",
+    "TATAMOTORS": "TATAMOTORS.NS",
     "--- US STOCKS ---": None,
     "Apple": "AAPL",
     "Tesla": "TSLA",
     "Microsoft": "MSFT",
     "NVIDIA": "NVDA",
+    "Amazon": "AMZN",
+    "Google": "GOOGL",
+    "Meta": "META",
     "--- GLOBAL INDICES ---": None,
     "S&P 500": "^GSPC",
     "Nasdaq": "^IXIC",
     "Dow Jones": "^DJI",
     "Nikkei 225": "^N225",
     "FTSE 100": "^FTSE",
+    "DAX": "^GDAXI",
+    "Hang Seng": "^HSI",
     "--- COMMODITIES ---": None,
     "Gold": "GC=F",
     "Silver": "SI=F",
     "Crude Oil": "CL=F",
+    "Natural Gas": "NG=F",
+    "Copper": "HG=F",
     "--- FOREX ---": None,
     "USD/INR": "USDINR=X",
     "EUR/USD": "EURUSD=X",
+    "GBP/USD": "GBPUSD=X",
+    "USD/JPY": "JPY=X",
     "--- CRYPTO ---": None,
     "Bitcoin": "BTC-USD",
     "Ethereum": "ETH-USD",
+    "Solana": "SOL-USD",
 }
 
 valid_options = {k: v for k, v in asset_options.items() if v is not None}
 selected_label = st.sidebar.selectbox("Select Asset", list(valid_options.keys()))
 ticker_symbol = valid_options[selected_label]
 
-manual_ticker = st.sidebar.text_input("Custom Ticker", value="")
+manual_ticker = st.sidebar.text_input("Custom Ticker (overrides dropdown)", value="")
 if manual_ticker.strip() != "":
     ticker_symbol = manual_ticker.strip()
     selected_label = ticker_symbol
 
+st.sidebar.caption("Examples: AAPL, ^GSPC, GC=F, BTC-USD, RELIANCE.NS")
+
 # --- TIMEFRAME ---
 st.sidebar.markdown("---")
-st.sidebar.subheader("Timeframe")
-interval = st.sidebar.selectbox("Interval", ["1m", "5m", "15m", "30m", "1h", "1d"], index=5)
+st.sidebar.subheader("⏱️ Timeframe")
+interval = st.sidebar.selectbox("Interval", ["1m", "5m", "15m", "30m", "1h", "1d"], index=4)
 
 interval_limits = {
     "1m":  ["1d", "5d"],
     "5m":  ["1d", "5d", "1mo"],
-    "15m": ["1d", "5d", "1mo"],
-    "30m": ["1d", "5d", "1mo"],
+    "15m": ["1d", "5d", "1mo", "3mo"],
+    "30m": ["1d", "5d", "1mo", "3mo"],
     "1h":  ["1d", "5d", "1mo", "3mo", "6mo", "1y"],
-    "1d":  ["1mo", "3mo", "6mo", "1y", "2y", "5y"],
+    "1d":  ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"],
 }
-available_periods = interval_limits.get(interval, ["1mo", "3mo"])
+available_periods = interval_limits.get(interval, ["1mo", "3mo", "6mo"])
 period = st.sidebar.selectbox("Period", available_periods, index=min(2, len(available_periods)-1))
+st.sidebar.caption(f"⚠️ Max history for {interval}: {available_periods[-1]}")
 
 show_last_n = st.sidebar.slider("Bars to show (zoom)", 30, 500, 150, step=10)
 
 # --- Indicators ---
 st.sidebar.markdown("---")
-st.sidebar.subheader("Indicators")
+st.sidebar.subheader("📈 Indicators")
 rsi_period = st.sidebar.slider("RSI Period", 5, 30, 14)
 sma_fast = st.sidebar.slider("SMA Fast", 5, 50, 20)
 sma_slow = st.sidebar.slider("SMA Slow", 20, 200, 50)
 pivot_len = st.sidebar.slider("S/R Pivot Length", 3, 30, 10)
 smc_pivot = st.sidebar.slider("SMC Pivot Length", 3, 30, 5)
 
+# --- Overlays ---
 st.sidebar.markdown("---")
-st.sidebar.subheader("Overlays")
+st.sidebar.subheader("🎨 Overlays")
 show_sr = st.sidebar.checkbox("Support / Resistance", value=True)
-show_smc = st.sidebar.checkbox("SMC Liquidity", value=True)
-show_bos = st.sidebar.checkbox("BOS", value=True)
+show_smc = st.sidebar.checkbox("SMC Liquidity (BSL/SSL)", value=True)
+show_bos = st.sidebar.checkbox("BOS / CHoCH", value=True)
 show_sma = st.sidebar.checkbox("Moving Averages", value=True)
 
 # =========================================================================
-# DATA FETCH
+# DATA FETCH (No cache — manual refresh controls it)
 # =========================================================================
-@st.cache_data(ttl=180)
-def fetch_data(symbol, period, interval):
+def fetch_data(symbol, period, interval, refresh_key):
     try:
         df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=False)
         if df is None or df.empty:
@@ -113,13 +174,13 @@ def fetch_data(symbol, period, interval):
         df = df.reset_index()
         if 'Datetime' in df.columns and 'Date' not in df.columns:
             df = df.rename(columns={'Datetime': 'Date'})
-        required = ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']
+        required = ['Date', 'Open', 'High', 'Low', 'Close']
         for col in required:
             if col not in df.columns:
                 return None
         df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
         return df
-    except Exception:
+    except Exception as e:
         return None
 
 # =========================================================================
@@ -228,130 +289,16 @@ def calc_trend(df, sma_f, sma_s):
     else: return "SIDEWAYS", "#ffaa00", score
 
 # =========================================================================
-# OPTION CHAIN FUNCTIONS
+# FETCH AND PROCESS
 # =========================================================================
-@st.cache_data(ttl=180)
-def fetch_option_chain_live(index_name):
-    """Read option chain from GitHub-hosted JSON (auto-updated by GitHub Actions every 10 min)."""
-    try:
-        url = f"https://raw.githubusercontent.com/avinashkale191-svg/trading-dashboard/main/option_chain_{index_name.lower()}.json"
-        r = http_requests.get(url, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            rows = data.get('strikes', [])
-            if rows:
-                df = pd.DataFrame(rows)
-                st.session_state['oc_meta'] = {
-                    'fetched_at': data.get('fetched_at', 'unknown'),
-                    'underlying': data.get('underlying', 0),
-                    'expiry': data.get('expiry', 'unknown'),
-                }
-                return df
-        return None
-    except Exception as e:
-        return None
-        def parse_option_chain(df):
-            """Normalize option chain data to standard columns."""
-            if df is None or df.empty:
-                return None
-    df = df.copy()
-    df.columns = [str(c).strip().lower().replace(' ', '_') for c in df.columns]
-    
-    # Find relevant columns
-    strike_col = next((c for c in df.columns if 'strike' in c), None)
-    ce_vol_col = next((c for c in df.columns if 'ce' in c and 'vol' in c), None)
-    pe_vol_col = next((c for c in df.columns if 'pe' in c and 'vol' in c), None)
-    ce_oi_col = next((c for c in df.columns if 'ce' in c and 'oi' in c), None)
-    pe_oi_col = next((c for c in df.columns if 'pe' in c and 'oi' in c), None)
-    
-    if not strike_col:
-        return None
-    
-    df = df.rename(columns={
-        strike_col: 'Strike',
-        **({ce_vol_col: 'Call_Volume'} if ce_vol_col else {}),
-        **({pe_vol_col: 'Put_Volume'} if pe_vol_col else {}),
-        **({ce_oi_col: 'Call_OI'} if ce_oi_col else {}),
-        **({pe_oi_col: 'Put_OI'} if pe_oi_col else {}),
-    })
-    
-    for col in ['Strike', 'Call_Volume', 'Put_Volume', 'Call_OI', 'Put_OI']:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-    
-    df = df[df['Strike'] > 0].sort_values('Strike').reset_index(drop=True)
-    
-    # Ensure Call_Volume and Put_Volume exist
-    if 'Call_Volume' not in df.columns:
-        df['Call_Volume'] = 0
-    if 'Put_Volume' not in df.columns:
-        df['Put_Volume'] = 0
-    
-    return df
-
-def analyze_option_chain(df):
-    """Compute PCR, walls, max pain, and volume shift."""
-    if df is None or df.empty:
-        return None
-    
-    total_ce_vol = df['Call_Volume'].sum()
-    total_pe_vol = df['Put_Volume'].sum()
-    pcr_vol = total_pe_vol / total_ce_vol if total_ce_vol > 0 else 0
-    
-    total_ce_oi = df['Call_OI'].sum() if 'Call_OI' in df.columns else 0
-    total_pe_oi = df['Put_OI'].sum() if 'Put_OI' in df.columns else 0
-    pcr_oi = total_pe_oi / total_ce_oi if total_ce_oi > 0 else 0
-    
-    call_wall = df.loc[df['Call_Volume'].idxmax()] if total_ce_vol > 0 else None
-    put_wall = df.loc[df['Put_Volume'].idxmax()] if total_pe_vol > 0 else None
-    
-    # Max pain: strike with minimum total value
-    df['Total_Vol'] = df['Call_Volume'] + df['Put_Volume']
-    max_pain_strike = df.loc[df['Total_Vol'].idxmin(), 'Strike'] if len(df) > 0 else 0
-    
-    # Volume ratio per strike
-    df['Vol_Ratio'] = df['Call_Volume'] / (df['Put_Volume'] + 1)
-    df['Shift'] = df['Vol_Ratio'] - 1
-    df['Shift_Label'] = df['Shift'].apply(
-        lambda x: 'CALL HEAVY' if x > 0.5 else ('PUT HEAVY' if x < -0.3 else 'BALANCED')
-    )
-    
-    # Trend
-    if pcr_vol > 1.2:
-        trend = "BULLISH"
-        reason = f"PCR {pcr_vol:.2f} > 1.2 → Puts dominate → Bulls writing puts"
-    elif pcr_vol < 0.7:
-        trend = "BEARISH"
-        reason = f"PCR {pcr_vol:.2f} < 0.7 → Calls dominate → Bears writing calls"
-    else:
-        trend = "NEUTRAL"
-        reason = f"PCR {pcr_vol:.2f} → Balanced activity"
-    
-    return {
-        'total_ce_vol': total_ce_vol,
-        'total_pe_vol': total_pe_vol,
-        'total_ce_oi': total_ce_oi,
-        'total_pe_oi': total_pe_oi,
-        'pcr_vol': pcr_vol,
-        'pcr_oi': pcr_oi,
-        'call_wall_strike': call_wall['Strike'] if call_wall is not None else 0,
-        'call_wall_vol': call_wall['Call_Volume'] if call_wall is not None else 0,
-        'put_wall_strike': put_wall['Strike'] if put_wall is not None else 0,
-        'put_wall_vol': put_wall['Put_Volume'] if put_wall is not None else 0,
-        'max_pain': max_pain_strike,
-        'trend': trend,
-        'reason': reason,
-        'df': df,
-    }
-
-# =========================================================================
-# PROCESS
-# =========================================================================
-df = fetch_data(ticker_symbol, period, interval)
+df = fetch_data(ticker_symbol, period, interval, st.session_state['refresh_counter'])
 if df is None or len(df) < 20:
-    st.error(f"⚠️ Could not fetch data for **{ticker_symbol}** at {interval}/{period}")
+    st.error(f"⚠️ Could not fetch data for **{ticker_symbol}** at {interval}/{period}.")
     st.info("Try a different interval/period. For NIFTY 50 use `1d` or `1h`.")
     st.stop()
+
+# Update timestamp
+st.session_state['last_update_str'] = datetime.now().strftime('%H:%M:%S')
 
 df['RSI'] = calc_rsi(df['Close'], rsi_period)
 df['OrderFlow'] = calc_order_flow(df)
@@ -363,7 +310,7 @@ bsl, ssl = find_smc(df, smc_pivot)
 bos_events = find_bos(df, smc_pivot)
 
 latest = df.iloc[-1]
-prev = df.iloc[-2]
+prev = df.iloc[-2] if len(df) > 1 else latest
 pct_change = (latest['Close'] - prev['Close']) / prev['Close'] * 100 if prev['Close'] != 0 else 0
 
 sma_f = df['SMA_Fast'].iloc[-1]
@@ -387,7 +334,8 @@ st.markdown(
     📊 MARKET TREND: {trend_label}
     </span>
     <span style="color:#aaa;font-size:14px;margin-left:20px;">
-    Score: {trend_score:+d}</span></div>""",
+    Score: {trend_score:+d} · SMA20: {sma_f:.2f} · SMA50: {sma_s:.2f}
+    </span></div>""",
     unsafe_allow_html=True
 )
 
@@ -399,9 +347,7 @@ x_end = df_display['Date'].iloc[-1]
 # =========================================================================
 # TABS
 # =========================================================================
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📊 Chart", "📉 Option Chain", "💧 SMC", "🏦 Smart Money", "📋 Data"
-])
+tab1, tab2, tab3 = st.tabs(["📊 Chart", "💧 SMC Liquidity", "🏦 Smart Money"])
 
 # -------------------------------------------------------------------------
 # TAB 1: CHART
@@ -491,132 +437,9 @@ with tab1:
     })
 
 # -------------------------------------------------------------------------
-# TAB 2: OPTION CHAIN
+# TAB 2: SMC
 # -------------------------------------------------------------------------
 with tab2:
-    st.subheader("📉 Option Chain — Call/Put Volume Analysis")
-    
-    if 'oc_data' not in st.session_state:
-        st.session_state['oc_data'] = None
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown("### 🚀 Option 1: Auto-Fetch (NIFTY/BANKNIFTY)")
-        oc_index = st.selectbox("Index", ["NIFTY", "BANKNIFTY", "FINNIFTY"], key="oc_idx")
-        if st.button("🔄 Fetch Live Option Chain", key="fetch_oc"):
-            with st.spinner("Fetching from NSE..."):
-                raw = fetch_option_chain_live(oc_index)
-                parsed = parse_option_chain(raw)
-                if parsed is not None and not parsed.empty:
-                    st.session_state['oc_data'] = parsed
-                    st.success(f"✅ Loaded {len(parsed)} strikes")
-                else:
-                    st.error("❌ Auto-fetch failed. NSE is likely blocking. Use Manual Paste below.")
-    
-    with col2:
-        st.markdown("### ✍️ Option 2: Manual Paste (Always Works)")
-        st.caption("Go to nseindia.com → Option Chain → Copy the table → Paste here")
-        pasted = st.text_area("Paste CSV/TSV from NSE option chain", height=150, key="manual_paste")
-        if st.button("📋 Load Pasted Data", key="load_paste"):
-            if pasted.strip():
-                try:
-                    manual_df = pd.read_csv(io.StringIO(pasted), sep=None, engine='python')
-                    parsed = parse_option_chain(manual_df)
-                    if parsed is not None and not parsed.empty:
-                        st.session_state['oc_data'] = parsed
-                        st.success(f"✅ Loaded {len(parsed)} strikes")
-                    else:
-                        st.error("Could not parse. Ensure columns include Strike, Call Volume, Put Volume.")
-                except Exception as e:
-                    st.error(f"Parse error: {e}")
-            else:
-                st.warning("Paste some data first")
-    
-    # Display analysis
-    oc_df = st.session_state.get('oc_data')
-    if oc_df is not None and not oc_df.empty:
-        st.markdown("---")
-        analysis = analyze_option_chain(oc_df)
-        
-        # Summary metrics
-        m1, m2, m3, m4, m5 = st.columns(5)
-        m1.metric("Total Call Volume", f"{analysis['total_ce_vol']:,.0f}")
-        m2.metric("Total Put Volume", f"{analysis['total_pe_vol']:,.0f}")
-        m3.metric("PCR (Volume)", f"{analysis['pcr_vol']:.3f}")
-        m4.metric("Call Wall", f"{analysis['call_wall_strike']:.0f}")
-        m5.metric("Put Wall", f"{analysis['put_wall_strike']:.0f}")
-        
-        m6, m7, m8 = st.columns(3)
-        m6.metric("PCR (OI)", f"{analysis['pcr_oi']:.3f}" if analysis['pcr_oi'] > 0 else "—")
-        m7.metric("Max Pain", f"{analysis['max_pain']:.0f}")
-        m8.metric("Trend", analysis['trend'])
-        
-        st.info(f"**{analysis['trend']}** — {analysis['reason']}")
-        
-        # Volume bar chart
-        st.markdown("### Volume by Strike")
-        fig_oc = go.Figure()
-        fig_oc.add_trace(go.Bar(x=oc_df['Strike'], y=oc_df['Call_Volume'],
-                                name='Call Volume', marker_color='#ff4444', opacity=0.8))
-        fig_oc.add_trace(go.Bar(x=oc_df['Strike'], y=oc_df['Put_Volume'],
-                                name='Put Volume', marker_color='#00ff88', opacity=0.8))
-        fig_oc.update_layout(barmode='group', height=400, template='plotly_dark',
-                             paper_bgcolor='#131722', plot_bgcolor='#131722',
-                             xaxis_title='Strike', yaxis_title='Volume',
-                             legend=dict(orientation='h', y=1.02))
-        st.plotly_chart(fig_oc, use_container_width=True)
-        
-        # Volume ratio line
-        st.markdown("### Call vs Put Volume Ratio (per strike)")
-        fig_ratio = go.Figure()
-        fig_ratio.add_trace(go.Scatter(x=oc_df['Strike'], y=oc_df['Vol_Ratio'],
-                                       mode='lines+markers', name='CE/PE Ratio',
-                                       line=dict(color='#ffaa00', width=2)))
-        fig_ratio.add_hline(y=1.0, line=dict(color='gray', dash='dash'), annotation_text='Balanced')
-        fig_ratio.add_hline(y=1.2, line=dict(color='#ff4444', dash='dot'), annotation_text='Call Heavy')
-        fig_ratio.add_hline(y=0.8, line=dict(color='#00ff88', dash='dot'), annotation_text='Put Heavy')
-        fig_ratio.update_layout(height=350, template='plotly_dark',
-                                paper_bgcolor='#131722', plot_bgcolor='#131722',
-                                xaxis_title='Strike', yaxis_title='Ratio')
-        st.plotly_chart(fig_ratio, use_container_width=True)
-        
-        # Full table with numbers
-        st.markdown("### Full Option Chain Table")
-        
-        display_cols = ['Strike']
-        if 'Call_OI' in oc_df.columns: display_cols.append('Call_OI')
-        display_cols.append('Call_Volume')
-        if 'Put_OI' in oc_df.columns: display_cols.append('Put_OI')
-        display_cols.append('Put_Volume')
-        display_cols.extend(['Vol_Ratio', 'Shift_Label'])
-        
-        table_df = oc_df[display_cols].copy().round(2)
-        
-        # Highlight max call and put volume strikes
-        st.dataframe(
-            table_df.style.apply(
-                lambda row: ['background-color: #ff444433' if row['Strike'] == analysis['call_wall_strike']
-                             else ('background-color: #00ff8833' if row['Strike'] == analysis['put_wall_strike']
-                                   else '') for _ in row],
-                axis=1
-            ),
-            use_container_width=True, height=500
-        )
-        
-        st.caption(f"🔴 Call Wall (Resistance): **{analysis['call_wall_strike']:.0f}** ({analysis['call_wall_vol']:,.0f} calls) · 🟢 Put Wall (Support): **{analysis['put_wall_strike']:.0f}** ({analysis['put_wall_vol']:,.0f} puts)")
-        
-        # Clear button
-        if st.button("🗑️ Clear Option Chain"):
-            st.session_state['oc_data'] = None
-            st.rerun()
-    else:
-        st.info("👆 Use Auto-Fetch or Manual Paste to load option chain data")
-
-# -------------------------------------------------------------------------
-# TAB 3: SMC
-# -------------------------------------------------------------------------
-with tab3:
     st.subheader("💧 SMC Liquidity Zones")
     col_a, col_b = st.columns(2)
     with col_a:
@@ -637,9 +460,9 @@ with tab3:
             st.info("No SSL levels")
 
 # -------------------------------------------------------------------------
-# TAB 4: SMART MONEY
+# TAB 3: SMART MONEY
 # -------------------------------------------------------------------------
-with tab4:
+with tab3:
     st.subheader("🏦 Smart Money Positioning")
     if not NSELIB_AVAILABLE:
         st.error("nselib not installed")
@@ -670,15 +493,8 @@ with tab4:
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# -------------------------------------------------------------------------
-# TAB 5: DATA
-# -------------------------------------------------------------------------
-with tab5:
-    st.subheader("📋 Raw Data")
-    display_df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume', 'RSI', 'OrderFlow']].tail(200).round(2)
-    st.dataframe(display_df, use_container_width=True, height=600)
-    csv = display_df.to_csv(index=False).encode('utf-8')
-    st.download_button("⬇️ Download CSV", csv, f"{selected_label}_data.csv", "text/csv")
-
+# =========================================================================
+# FOOTER
+# =========================================================================
 st.markdown("---")
-st.caption(f"Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption(f"Last update: {st.session_state['last_update_str']} | Data by Yahoo Finance")

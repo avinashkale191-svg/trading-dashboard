@@ -365,6 +365,97 @@ def calc_trend(df, sma_f, sma_s):
     else: return "SIDEWAYS", "#ffaa00", score
         
 # =========================================================================
+# SIGNAL GENERATION (v14.1 style)
+# =========================================================================
+
+def generate_signals(df, bias_score, res_levels, sup_levels, bsl, ssl, bos_events, vol_avg_period=20, vol_mult=1.5, bias_filter=2, bos_threshold=4):
+    """Generates BUY/SELL signals at each bar based on v14.1 logic."""
+    signals = []
+    
+    if len(df) < 50:
+        return signals
+    
+    # Volume average
+    df['VolAvg'] = df['Volume'].rolling(vol_avg_period).mean()
+    df['VolConfirmed'] = df['Volume'] >= (df['VolAvg'] * vol_mult)
+    
+    # Recent sweep bars
+    recent_sweeps_sell = set()
+    recent_sweeps_buy = set()
+    
+    for lvl in bsl:
+        if lvl.get('swept') and 'sweep_bar' in lvl:
+            recent_sweeps_sell.add(lvl['sweep_bar'])
+    for lvl in ssl:
+        if lvl.get('swept') and 'sweep_bar' in lvl:
+            recent_sweeps_buy.add(lvl['sweep_bar'])
+    
+    # BOS events lookup
+    bos_by_bar = {}
+    for evt in bos_events:
+        bos_by_bar.setdefault(evt['bar'], []).append(evt['type'])
+    
+    # Iterate through candles, check for signals
+    for i in range(50, len(df)):
+        row = df.iloc[i]
+        
+        # Compute local bias at this bar (simplified)
+        local_bias = 0
+        if i >= 50:
+            sma_f = df['SMA_Fast'].iloc[i] if not pd.isna(df['SMA_Fast'].iloc[i]) else row['Close']
+            sma_s = df['SMA_Slow'].iloc[i] if not pd.isna(df['SMA_Slow'].iloc[i]) else row['Close']
+            if row['Close'] > sma_f and sma_f > sma_s:
+                local_bias += 2
+            elif row['Close'] < sma_f and sma_f < sma_s:
+                local_bias -= 2
+            if not pd.isna(row['RSI']):
+                if row['RSI'] > 60: local_bias += 1
+                elif row['RSI'] < 40: local_bias -= 1
+            if i >= 20:
+                if row['Close'] > df['Close'].iloc[i-20]:
+                    local_bias += 1
+                else:
+                    local_bias -= 1
+        
+        vol_ok = bool(row['VolConfirmed']) if not pd.isna(row['VolConfirmed']) else False
+        
+        # Check sweep (within 3 bars)
+        sweep_buy = any((i - sb) <= 3 and (i - sb) >= 0 for sb in recent_sweeps_buy)
+        sweep_sell = any((i - sb) <= 3 and (i - sb) >= 0 for sb in recent_sweeps_sell)
+        
+        # Check BOS at this bar
+        bos_here = bos_by_bar.get(i, [])
+        bos_up = 'BOS_UP' in bos_here
+        bos_down = 'BOS_DOWN' in bos_here
+        
+        # BUY signal
+        if (sweep_buy and local_bias >= bias_filter and vol_ok) or (bos_up and local_bias >= bos_threshold and vol_ok):
+            signals.append({
+                'bar': i,
+                'date': row['Date'],
+                'price': float(row['Low']) * 0.999,
+                'type': 'BUY',
+                'entry': float(row['Close']),
+                'sl': float(row['Low']) * 0.995,
+                't1': float(row['Close']) * 1.005,
+                't2': float(row['Close']) * 1.010,
+            })
+        # SELL signal
+        elif (sweep_sell and local_bias <= -bias_filter and vol_ok) or (bos_down and local_bias <= -bos_threshold and vol_ok):
+            signals.append({
+                'bar': i,
+                'date': row['Date'],
+                'price': float(row['High']) * 1.001,
+                'type': 'SELL',
+                'entry': float(row['Close']),
+                'sl': float(row['High']) * 1.005,
+                't1': float(row['Close']) * 0.995,
+                't2': float(row['Close']) * 0.990,
+            })
+    
+    # Return only last 10 signals
+    return signals[-10:]
+# =========================================================================
 # FETCH WITH AUTO-CORRECTION
 # =========================================================================
 df = fetch_data(ticker_symbol, period, interval, st.session_state['refresh_counter'])

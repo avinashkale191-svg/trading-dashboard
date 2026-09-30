@@ -674,6 +674,43 @@ with tab1:
                     fig.add_trace(go.Scatter(x=[df_display['Date'].iloc[idx]], y=[evt['price']],
                                              mode='markers', marker=dict(color=color, size=10, symbol=symbol),
                                              showlegend=False), row=1, col=1)
+                        
+    # =====================================================================
+    # SIGNALS OVERLAY (Chunk 2)
+    # =====================================================================
+    signals = generate_signals(df, trend_score, res_levels, sup_levels, bsl, ssl, bos_events)
+    
+    for sig in signals:
+        if sig['bar'] >= bars_offset:
+            idx = sig['bar'] - bars_offset
+            if idx < len(df_display):
+                sig_date = df_display['Date'].iloc[idx]
+                sig_price = sig['price']
+                
+                if sig['type'] == 'BUY':
+                    fig.add_trace(go.Scatter(
+                        x=[sig_date], y=[sig_price],
+                        mode='markers+text',
+                        marker=dict(color='#00ff88', size=22, symbol='triangle-up',
+                                   line=dict(color='#000000', width=1)),
+                        text=['BUY'],
+                        textposition='bottom center',
+                        textfont=dict(color='#00ff88', size=11, family='Arial Black'),
+                        showlegend=False,
+                        hovertemplate=f"BUY<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
+                    ), row=1, col=1)
+                else:
+                    fig.add_trace(go.Scatter(
+                        x=[sig_date], y=[sig_price],
+                        mode='markers+text',
+                        marker=dict(color='#ff4444', size=22, symbol='triangle-down',
+                                   line=dict(color='#000000', width=1)),
+                        text=['SELL'],
+                        textposition='top center',
+                        textfont=dict(color='#ff4444', size=11, family='Arial Black'),
+                        showlegend=False,
+                        hovertemplate=f"SELL<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
+                    ), row=1, col=1)
 
     fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['RSI'],
                              name="RSI", line=dict(color='#ffaa00', width=1.5)), row=2, col=1)

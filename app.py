@@ -711,7 +711,82 @@ with tab1:
                         showlegend=False,
                         hovertemplate=f"SELL<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
                     ), row=1, col=1)
-
+    # =====================================================================
+    # R:R BOXES (Chunk 3)
+    # =====================================================================
+    for sig in signals:
+        if sig['bar'] >= bars_offset:
+            idx = sig['bar'] - bars_offset
+            if idx < len(df_display):
+                sig_date = df_display['Date'].iloc[idx]
+                
+                future_bars = df_display.iloc[idx:min(idx + 50, len(df_display))]
+                is_buy = sig['type'] == 'BUY'
+                
+                hit_t1 = False
+                hit_sl = False
+                
+                for _, bar in future_bars.iterrows():
+                    if is_buy:
+                        if bar['High'] >= sig['t1']:
+                            hit_t1 = True
+                            break
+                        if bar['Low'] <= sig['sl']:
+                            hit_sl = True
+                            break
+                    else:
+                        if bar['Low'] <= sig['t1']:
+                            hit_t1 = True
+                            break
+                        if bar['High'] >= sig['sl']:
+                            hit_sl = True
+                            break
+                
+                end_idx = min(idx + 15, len(df_display) - 1)
+                end_date = df_display['Date'].iloc[end_idx]
+                
+                if not hit_sl:
+                    fig.add_shape(
+                        type='rect',
+                        x0=sig_date, x1=end_date,
+                        y0=min(sig['entry'], sig['t1']),
+                        y1=max(sig['entry'], sig['t1']),
+                        fillcolor='rgba(0,255,136,0.15)',
+                        line=dict(color='rgba(0,255,136,0.6)', width=1),
+                        layer='below'
+                    )
+                
+                if not hit_t1:
+                    fig.add_shape(
+                        type='rect',
+                        x0=sig_date, x1=end_date,
+                        y0=min(sig['entry'], sig['sl']),
+                        y1=max(sig['entry'], sig['sl']),
+                        fillcolor='rgba(255,68,68,0.15)',
+                        line=dict(color='rgba(255,68,68,0.6)', width=1),
+                        layer='below'
+                    )
+                
+                if hit_t1:
+                    outcome_text = "WON"
+                    outcome_color = '#00ff88'
+                elif hit_sl:
+                    outcome_text = "LOST"
+                    outcome_color = '#ff4444'
+                else:
+                    outcome_text = "OPEN"
+                    outcome_color = '#ffaa00'
+                
+                fig.add_annotation(
+                    x=end_date, y=sig['entry'],
+                    text=outcome_text,
+                    showarrow=False,
+                    xanchor='left',
+                    font=dict(color=outcome_color, size=9, family='Arial'),
+                    bgcolor='rgba(0,0,0,0.6)',
+                    bordercolor=outcome_color,
+                    borderwidth=1
+                )
     fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['RSI'],
                              name="RSI", line=dict(color='#ffaa00', width=1.5)), row=2, col=1)
     fig.add_hline(y=70, line=dict(color='#ff4444', width=1, dash='dot'), row=2, col=1)

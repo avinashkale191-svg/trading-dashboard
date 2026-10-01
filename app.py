@@ -856,6 +856,83 @@ with tab3:
                         st.warning(f"No data for {date_str}. Try earlier date.")
                 except Exception as e:
                     st.error(f"Error: {e}")
-
+# -------------------------------------------------------------------------
+# TAB 4: OPTION CHAIN (Upstox live)
+# -------------------------------------------------------------------------
+with tab4:
+    st.subheader("📊 Live Option Chain (BankNifty)")
+    
+    if not UPSTOX_AVAILABLE:
+        st.error("❌ Upstox data module not available. Check imports.")
+    else:
+        col_a, col_b = st.columns([1, 3])
+        with col_a:
+            if st.button("🔄 Fetch Option Chain", use_container_width=True):
+                st.session_state["oc_fetch"] = True
+        
+        if "oc_fetch" not in st.session_state:
+            st.session_state["oc_fetch"] = False
+        
+        if st.session_state["oc_fetch"]:
+            with st.spinner("Fetching live option chain from Upstox..."):
+                spot = get_spot_quote("NSE_INDEX|Nifty Bank")
+                chain = get_option_chain("NSE_INDEX|Nifty Bank")
+            
+            if spot:
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("BankNifty Spot", f"{spot['ltp']:.2f}", f"{spot.get('pct_change', 0):+.2f}%")
+                c2.metric("Open", f"{spot.get('open', 0):.2f}" if spot.get('open') else "—")
+                c3.metric("High", f"{spot.get('high', 0):.2f}" if spot.get('high') else "—")
+                c4.metric("Low", f"{spot.get('low', 0):.2f}" if spot.get('low') else "—")
+                c5.metric("Prev Close", f"{spot.get('close', 0):.2f}" if spot.get('close') else "—")
+            
+            if chain is not None and not chain.empty:
+                pcr = chain.attrs.get("pcr", 0)
+                max_pain = chain.attrs.get("max_pain", 0)
+                expiry = chain.attrs.get("expiry", "—")
+                total_ce = chain.attrs.get("total_ce_oi", 0)
+                total_pe = chain.attrs.get("total_pe_oi", 0)
+                
+                st.markdown("---")
+                m1, m2, m3, m4, m5 = st.columns(5)
+                m1.metric("PCR", f"{pcr:.2f}", "Bullish" if pcr > 1.2 else "Bearish" if pcr < 0.8 else "Neutral")
+                m2.metric("Max Pain", f"{max_pain:,.0f}" if max_pain else "—")
+                m3.metric("Expiry", str(expiry))
+                m4.metric("Total CE OI", f"{int(total_ce):,}")
+                m5.metric("Total PE OI", f"{int(total_pe):,}")
+                
+                st.markdown("---")
+                
+                spot_price = spot['ltp'] if spot else chain['strike'].median()
+                chain_filtered = chain[
+                    (chain['strike'] >= spot_price * 0.97) & 
+                    (chain['strike'] <= spot_price * 1.03)
+                ].copy()
+                
+                st.markdown("### Strikes Near Spot (±3%)")
+                display_cols = ['strike', 'ce_ltp', 'ce_oi', 'pe_ltp', 'pe_oi']
+                available_cols = [c for c in display_cols if c in chain_filtered.columns]
+                st.dataframe(
+                    chain_filtered[available_cols].sort_values('strike'),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                st.markdown("---")
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("### 🔴 Top 5 CALL OI (Resistance)")
+                    top_ce = chain.nlargest(5, 'ce_oi')[['strike', 'ce_oi', 'ce_ltp']]
+                    st.dataframe(top_ce, use_container_width=True, hide_index=True)
+                with c2:
+                    st.markdown("### 🟢 Top 5 PUT OI (Support)")
+                    top_pe = chain.nlargest(5, 'pe_oi')[['strike', 'pe_oi', 'pe_ltp']]
+                    st.dataframe(top_pe, use_container_width=True, hide_index=True)
+                
+                st.caption(f"Live data via Upstox • {len(chain)} strikes • Expiry {expiry}")
+            else:
+                st.warning("⚠️ Could not fetch option chain. Check Upstox token or market hours.")
+        else:
+            st.info("👆 Click **Fetch Option Chain** to load live BankNifty data.")
 st.markdown("---")
 st.caption(f"Last update: {st.session_state['last_update_str']} | Data by Yahoo Finance")

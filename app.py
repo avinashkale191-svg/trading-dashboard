@@ -203,6 +203,17 @@ show_rr_boxes = st.sidebar.checkbox("R:R Boxes", value=False)
 # =========================================================================
 def fetch_data(symbol, period, interval, refresh_key):
     try:
+                # Try Upstox first for Nifty/BankNifty — matches TradingView data
+        try:
+            if "BANK" in symbol.upper() or "NIFTY" in symbol.upper():
+                from upstox_data import fetch_candles
+                up_symbol = "NSE_INDEX|Nifty Bank" if "BANK" in symbol.upper() else "NSE_INDEX|Nifty 50"
+                up_interval = interval if interval in ["1m","5m","15m","30m","1h","1d"] else "1m"
+                df_up = fetch_candles(symbol=up_symbol, interval=up_interval, days=5)
+                if df_up is not None and not df_up.empty:
+                    return df_up
+        except Exception as _e:
+            print(f"Upstox fetch failed, falling back to Yahoo: {_e}")
         df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=False)
         if df is None or df.empty:
             return None

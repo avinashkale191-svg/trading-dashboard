@@ -202,24 +202,42 @@ show_rr_boxes = st.sidebar.checkbox("R:R Boxes", value=False)
 # DATA FETCH
 # =========================================================================
 def fetch_data(symbol, period, interval, refresh_key):
-    """Fetch OHLC candles. Upstox-only for NIFTY/BANKNIFTY indexes.
-       Yahoo fallback only for non-Indian symbols (AAPL, BTC-USD, etc.)."""
+    """Fetch OHLC candles.
+    - Indian indices & stocks -> Upstox (matches TradingView)
+    - US / global / forex / crypto -> Yahoo Finance
+    """
     try:
         from upstox_data import fetch_candles
     except Exception as _imp:
         print(f"Could not import fetch_candles: {_imp}")
         fetch_candles = None
 
-    sym_up = str(symbol).upper()
+    # ---- Map app symbol -> Upstox instrument key ----
+    UPSTOX_MAP = {
+        # Indian Indices
+        "NSEI":         "NSE_INDEX|Nifty 50",
+        "NIFTY 50":     "NSE_INDEX|Nifty 50",
+        "NSEBANK":      "NSE_INDEX|Nifty Bank",
+        "BANK NIFTY":   "NSE_INDEX|Nifty Bank",
+        "BSESN":        "BSE_INDEX|SENSEX",
+        "SENSEX":       "BSE_INDEX|SENSEX",
+        "INDIAVIX":     "NSE_INDEX|India VIX",
+        "INDIA VIX":    "NSE_INDEX|India VIX",
+        # Indian Stocks (via ISIN)
+        "RELIANCE":     "NSE_EQ|INE002A01018",
+        "TCS":          "NSE_EQ|INE467B01029",
+        "INFY":         "NSE_EQ|INE009A01021",
+        "HDFCBANK":     "NSE_EQ|INE040A01034",
+        "SBIN":         "NSE_EQ|INE062A01020",
+        "ITC":          "NSE_EQ|INE154A01025",
+        "TATAMOTORS":   "NSE_EQ|INE155A01022",
+    }
 
-    # Map app symbol → Upstox instrument key
-    up_symbol = None
-    if "BANK" in sym_up or "NSEBANK" in sym_up:
-        up_symbol = "NSE_INDEX|Nifty Bank"
-    elif "NIFTY" in sym_up or "NSEI" in sym_up:
-        up_symbol = "NSE_INDEX|Nifty 50"
+    # Normalize: strip Yahoo suffix/prefix, uppercase
+    sym_key = str(symbol).upper().replace("^", "").replace(".NS", "").replace(".BO", "").strip()
+    up_symbol = UPSTOX_MAP.get(sym_key)
 
-    # ---- Upstox first (for Indian indexes) ----
+    # ---- Upstox first (Indian symbols) ----
     if up_symbol and fetch_candles:
         up_interval = interval if interval in ["1m", "5m", "15m", "30m", "1h", "1d"] else "1m"
         try:
@@ -230,9 +248,9 @@ def fetch_data(symbol, period, interval, refresh_key):
                     return df_up
             print(f"Upstox returned no data for {up_symbol}")
         except Exception as _e:
-            print(f"Upstox fetch failed: {_e}")
+            print(f"Upstox fetch failed for {up_symbol}: {_e}")
 
-    # ---- Yahoo fallback (non-Indian symbols, or if Upstox failed) ----
+    # ---- Yahoo fallback (non-Indian symbols) ----
     try:
         df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=False)
         if df is None or df.empty:

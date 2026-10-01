@@ -683,8 +683,8 @@ st.markdown(
 # =========================================================================
 # TRENDING / RANGING BADGE
 # =========================================================================
-range_pct_now = float(rangePct) if not pd.isna(rangePct) else 0
-is_trending_now = bool(isTrending) if 'isTrending' in dir() else (range_pct_now >= rangeThreshold)
+range_pct_now = float(rangeThreshold) if not pd.isna(rangeThreshold) else 0
+is_trending_now = (range_pct_now >= rangeThreshold)
 
 if is_trending_now:
     badge_text = "TRENDING"

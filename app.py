@@ -190,7 +190,7 @@ show_bos = st.sidebar.checkbox("BOS / CHoCH", value=True)
 show_sma = st.sidebar.checkbox("Moving Averages", value=True)
 show_trendlines = st.sidebar.checkbox("Auto Trend Lines", value=True)
 extend_trendlines = st.sidebar.checkbox("Extend Trend Lines", value=True)
-
+show_rr_boxes = st.sidebar.checkbox("R:R Boxes", value=False)
 # =========================================================================
 # DATA FETCH
 # =========================================================================
@@ -714,7 +714,7 @@ with tab1:
     # =====================================================================
     # R:R BOXES (Chunk 3)
     # =====================================================================
-    for sig in signals:
+    for sig in (signals if show_rr_boxes else []):
         if sig['bar'] >= bars_offset:
             idx = sig['bar'] - bars_offset
             if idx < len(df_display):
@@ -742,7 +742,7 @@ with tab1:
                             hit_sl = True
                             break
                 
-                end_idx = min(idx + 15, len(df_display) - 1)
+                end_idx = min(idx + 8, len(df_display) - 1)
                 end_date = df_display['Date'].iloc[end_idx]
                 
                 if not hit_sl:

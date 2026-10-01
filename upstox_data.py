@@ -225,6 +225,47 @@ def compute_max_pain(df):
 
 
 # =========================================================================
+# CANDLES (OHLC) — for chart
+# =========================================================================
+def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
+    """Fetch OHLC candles from Upstox."""
+    if not UPSTOX_TOKEN:
+        return None
+
+    interval_map = {
+        "1m": "1minute", "5m": "5minute", "15m": "15minute",
+        "30m": "30minute", "1h": "60minute", "1d": "day"
+    }
+    upstox_interval = interval_map.get(interval, "1minute")
+
+    url = f"{BASE_URL}/historical-candle/{symbol}/{upstox_interval}"
+
+    from_date_obj = datetime.now() - pd.Timedelta(days=days)
+    from_date = from_date_obj.strftime("%Y-%m-%d")
+    to_date = datetime.now().strftime("%Y-%m-%d")
+
+    full_url = f"{url}/{to_date}/{from_date}/{to_date}"
+
+    try:
+        r = requests.get(full_url, headers=get_headers(), timeout=15)
+        if r.status_code != 200:
+            print(f"Candles error: {r.status_code} - {r.text[:200]}")
+            return None
+
+        candles = r.json().get("data", {}).get("candles", [])
+        if not candles:
+            return None
+
+        df = pd.DataFrame(candles, columns=["Date", "Open", "High", "Low", "Close", "Volume", "OI"])
+        df["Date"] = pd.to_datetime(df["Date"])
+        df = df.sort_values("Date").reset_index(drop=True)
+        df = df[["Date", "Open", "High", "Low", "Close", "Volume"]]
+        return df
+    except Exception as e:
+        print(f"Candles exception: {e}")
+        return None
+
+# =========================================================================
 # 5. TEST
 # =========================================================================
 if __name__ == "__main__":

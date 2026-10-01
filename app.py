@@ -836,7 +836,7 @@ with tab1:
     # =====================================================================
     # RANGE HIGH / LOW LINES + LABELS
     # =====================================================================
-    if drawRangeLines:
+    if True:
         r_color = 'rgba(255,136,0,0.6)'
         fig.add_shape(
             type='line', xref='x', yref='y',

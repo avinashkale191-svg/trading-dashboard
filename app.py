@@ -202,18 +202,38 @@ show_rr_boxes = st.sidebar.checkbox("R:R Boxes", value=False)
 # DATA FETCH
 # =========================================================================
 def fetch_data(symbol, period, interval, refresh_key):
+    """Fetch OHLC candles. Upstox-only for NIFTY/BANKNIFTY indexes.
+       Yahoo fallback only for non-Indian symbols (AAPL, BTC-USD, etc.)."""
     try:
-                # Try Upstox first for Nifty/BankNifty — matches TradingView data
+        from upstox_data import fetch_candles
+    except Exception as _imp:
+        print(f"Could not import fetch_candles: {_imp}")
+        fetch_candles = None
+
+    sym_up = str(symbol).upper()
+
+    # Map app symbol → Upstox instrument key
+    up_symbol = None
+    if "BANK" in sym_up or "NSEBANK" in sym_up:
+        up_symbol = "NSE_INDEX|Nifty Bank"
+    elif "NIFTY" in sym_up or "NSEI" in sym_up:
+        up_symbol = "NSE_INDEX|Nifty 50"
+
+    # ---- Upstox first (for Indian indexes) ----
+    if up_symbol and fetch_candles:
+        up_interval = interval if interval in ["1m", "5m", "15m", "30m", "1h", "1d"] else "1m"
         try:
-            if "BANK" in symbol.upper() or "NIFTY" in symbol.upper():
-                from upstox_data import fetch_candles
-                up_symbol = "NSE_INDEX|Nifty Bank" if "BANK" in symbol.upper() else "NSE_INDEX|Nifty 50"
-                up_interval = interval if interval in ["1m","5m","15m","30m","1h","1d"] else "1m"
-                df_up = fetch_candles(symbol=up_symbol, interval=up_interval, days=5)
-                if df_up is not None and not df_up.empty:
+            df_up = fetch_candles(symbol=up_symbol, interval=up_interval, days=10)
+            if df_up is not None and not df_up.empty:
+                df_up = df_up.dropna(subset=["Open", "High", "Low", "Close"])
+                if not df_up.empty:
                     return df_up
+            print(f"Upstox returned no data for {up_symbol}")
         except Exception as _e:
-            print(f"Upstox fetch failed, falling back to Yahoo: {_e}")
+            print(f"Upstox fetch failed: {_e}")
+
+    # ---- Yahoo fallback (non-Indian symbols, or if Upstox failed) ----
+    try:
         df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=False)
         if df is None or df.empty:
             return None
@@ -228,7 +248,8 @@ def fetch_data(symbol, period, interval, refresh_key):
                 return None
         df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
         return df
-    except Exception:
+    except Exception as e:
+        print(f"Yahoo fetch failed: {e}")
         return None
 
 # =========================================================================

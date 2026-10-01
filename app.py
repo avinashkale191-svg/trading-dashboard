@@ -681,6 +681,37 @@ st.markdown(
 )
 
 # =========================================================================
+# TRENDING / RANGING BADGE
+# =========================================================================
+range_pct_now = float(rangePct) if not pd.isna(rangePct) else 0
+is_trending_now = bool(isTrending) if 'isTrending' in dir() else (range_pct_now >= rangeThreshold)
+
+if is_trending_now:
+    badge_text = "TRENDING"
+    badge_color = "#00ff88"
+    badge_status = "Signals ACTIVE"
+else:
+    badge_text = "RANGE-BOUND"
+    badge_color = "#ff8800"
+    badge_status = "Signals SUPPRESSED"
+
+vol_badge = "Vol OK" if volConfirmed else "Vol LOW"
+
+st.markdown(
+    f"""<div style="background:#131722;border-left:6px solid {badge_color};
+    border-radius:8px;padding:10px 18px;margin:10px 0;
+    display:flex;justify-content:space-between;align-items:center;">
+    <span style="color:{badge_color};font-size:16px;font-weight:bold;">
+    {badge_text}
+    </span>
+    <span style="color:#aaa;font-size:13px;">
+    {badge_status} | Range: {range_pct_now:.2f}% | {vol_badge}
+    </span>
+    </div>""",
+    unsafe_allow_html=True
+)
+
+# =========================================================================
 # TOP BANNER (v14.1 style)
 # =========================================================================
 banner_text = "WAIT"

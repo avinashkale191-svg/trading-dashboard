@@ -745,7 +745,7 @@ with tab1:
                 end_idx = min(idx + 8, len(df_display) - 1)
                 end_date = df_display['Date'].iloc[end_idx]
                 
-                max_box_height = float(row['Close']) * 0.003
+                max_box_height = float(sig['entry']) * 0.003
                     
                 if not hit_sl:
                         fig.add_shape(

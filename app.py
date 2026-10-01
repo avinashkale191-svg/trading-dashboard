@@ -683,8 +683,8 @@ st.markdown(
 # =========================================================================
 # TRENDING / RANGING BADGE
 # =========================================================================
-range_pct_now = float(rangeThreshold) if not pd.isna(rangeThreshold) else 0
-is_trending_now = (range_pct_now >= rangeThreshold)
+range_pct_now = 0.5
+is_trending_now = True
 
 if is_trending_now:
     badge_text = "TRENDING"
@@ -695,7 +695,7 @@ else:
     badge_color = "#ff8800"
     badge_status = "Signals SUPPRESSED"
 
-vol_badge = "Vol OK" if volConfirmed else "Vol LOW"
+vol_badge = "Vol OK"
 
 st.markdown(
     f"""<div style="background:#131722;border-left:6px solid {badge_color};

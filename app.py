@@ -596,6 +596,38 @@ c4.metric("Nearest BSL", f"{bsl[-1]['price']:.2f}" if bsl else "—")
 c5.metric("Nearest SSL", f"{ssl[-1]['price']:.2f}" if ssl else "—")
 
 # =========================================================================
+# HTF PANEL DISPLAY (1H + 1D)
+# =========================================================================
+htf_1h_color = "#00ff88" if htf_1h_label == "BULL" else "#ff4444" if htf_1h_label == "BEAR" else "#ffaa00"
+htf_1d_color = "#00ff88" if htf_1d_label == "BULL" else "#ff4444" if htf_1d_label == "BEAR" else "#ffaa00"
+
+st.markdown(
+    f"""<div style="background:#131722;border:2px solid #2a2e39;border-radius:8px;padding:12px;margin:10px 0;">
+    <div style="color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;">📊 HIGHER TIMEFRAME BIAS</div>
+    <table style="width:100%;border-collapse:collapse;color:#d1d4dc;font-size:13px;">
+    <tr style="background:#2a2e39;">
+        <th style="padding:6px;text-align:left;">TF</th>
+        <th style="padding:6px;text-align:center;">BIAS</th>
+        <th style="padding:6px;text-align:center;">SCORE</th>
+        <th style="padding:6px;text-align:center;">SIGNAL</th>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">1H</td>
+        <td style="padding:6px;text-align:center;background:{htf_1h_color}33;color:{htf_1h_color};font-weight:bold;">{htf_1h_label}</td>
+        <td style="padding:6px;text-align:center;">{htf_1h_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{htf_1h_color}33;color:{htf_1h_color};font-weight:bold;">{htf_1h_signal}</td>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">1D</td>
+        <td style="padding:6px;text-align:center;background:{htf_1d_color}33;color:{htf_1d_color};font-weight:bold;">{htf_1d_label}</td>
+        <td style="padding:6px;text-align:center;">{htf_1d_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{htf_1d_color}33;color:{htf_1d_color};font-weight:bold;">{htf_1d_signal}</td>
+    </tr>
+    </table></div>""",
+    unsafe_allow_html=True
+)
+
+# =========================================================================
 # TOP BANNER (v14.1 style)
 # =========================================================================
 banner_text = "WAIT"

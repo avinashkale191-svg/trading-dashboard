@@ -634,6 +634,53 @@ st.markdown(
 )
 
 # =========================================================================
+# MTF PANEL DISPLAY (1m + 5m + 15m)
+# =========================================================================
+mtf_1m_color = "#00ff88" if mtf_1m_label == "BULL" else "#ff4444" if mtf_1m_label == "BEAR" else "#ffaa00"
+mtf_5m_color = "#00ff88" if mtf_5m_label == "BULL" else "#ff4444" if mtf_5m_label == "BEAR" else "#ffaa00"
+mtf_15m_color = "#00ff88" if mtf_15m_label == "BULL" else "#ff4444" if mtf_15m_label == "BEAR" else "#ffaa00"
+
+mtf_1m_dir = "UP" if mtf_1m_score > 0 else "DOWN" if mtf_1m_score < 0 else "FLAT"
+mtf_5m_dir = "UP" if mtf_5m_score > 0 else "DOWN" if mtf_5m_score < 0 else "FLAT"
+mtf_15m_dir = "UP" if mtf_15m_score > 0 else "DOWN" if mtf_15m_score < 0 else "FLAT"
+
+st.markdown(
+    f"""<div style="background:#131722;border:2px solid #2a2e39;border-radius:8px;padding:12px;margin:10px 0;">
+    <div style="color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;">📊 MULTI-TIMEFRAME BIAS</div>
+    <table style="width:100%;border-collapse:collapse;color:#d1d4dc;font-size:13px;">
+    <tr style="background:#2a2e39;">
+        <th style="padding:6px;text-align:left;">TF</th>
+        <th style="padding:6px;text-align:center;">BIAS</th>
+        <th style="padding:6px;text-align:center;">SCORE</th>
+        <th style="padding:6px;text-align:center;">SIGNAL</th>
+        <th style="padding:6px;text-align:center;">DIRECTION</th>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">1m</td>
+        <td style="padding:6px;text-align:center;background:{mtf_1m_color}33;color:{mtf_1m_color};font-weight:bold;">{mtf_1m_label}</td>
+        <td style="padding:6px;text-align:center;">{mtf_1m_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{mtf_1m_color}33;color:{mtf_1m_color};font-weight:bold;">{mtf_1m_signal}</td>
+        <td style="padding:6px;text-align:center;">{mtf_1m_dir}</td>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">5m</td>
+        <td style="padding:6px;text-align:center;background:{mtf_5m_color}33;color:{mtf_5m_color};font-weight:bold;">{mtf_5m_label}</td>
+        <td style="padding:6px;text-align:center;">{mtf_5m_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{mtf_5m_color}33;color:{mtf_5m_color};font-weight:bold;">{mtf_5m_signal}</td>
+        <td style="padding:6px;text-align:center;">{mtf_5m_dir}</td>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">15m</td>
+        <td style="padding:6px;text-align:center;background:{mtf_15m_color}33;color:{mtf_15m_color};font-weight:bold;">{mtf_15m_label}</td>
+        <td style="padding:6px;text-align:center;">{mtf_15m_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{mtf_15m_color}33;color:{mtf_15m_color};font-weight:bold;">{mtf_15m_signal}</td>
+        <td style="padding:6px;text-align:center;">{mtf_15m_dir}</td>
+    </tr>
+    </table></div>""",
+    unsafe_allow_html=True
+)
+
+# =========================================================================
 # TOP BANNER (v14.1 style)
 # =========================================================================
 banner_text = "WAIT"

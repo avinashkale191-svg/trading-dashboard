@@ -745,48 +745,31 @@ with tab1:
                 end_idx = min(idx + 8, len(df_display) - 1)
                 end_date = df_display['Date'].iloc[end_idx]
                 
-                if not hit_sl:
-                    fig.add_shape(
-                        type='rect',
-                        x0=sig_date, x1=end_date,
-                        y0=min(sig['entry'], sig['t1']),
-                        y1=max(sig['entry'], sig['t1']),
-                        fillcolor='rgba(0,255,136,0.15)',
-                        line=dict(color='rgba(0,255,136,0.6)', width=1),
-                        layer='below'
-                    )
+                                    max_box_height = float(row['Close']) * 0.003
+                    
+                    if not hit_sl:
+                        fig.add_shape(
+                            type='rect',
+                            x0=sig_date, x1=end_date,
+                            y0=sig['entry'] - max_box_height,
+                            y1=sig['entry'] + max_box_height,
+                            fillcolor='rgba(0,255,136,0.10)',
+                            line=dict(color='rgba(0,255,136,0.3)', width=1),
+                            layer='below'
+                        )
+                    
+                    if not hit_t1:
+                        fig.add_shape(
+                            type='rect',
+                            x0=sig_date, x1=end_date,
+                            y0=sig['entry'] - max_box_height,
+                            y1=sig['entry'] + max_box_height,
+                            fillcolor='rgba(255,68,68,0.10)',
+                            line=dict(color='rgba(255,68,68,0.3)', width=1),
+                            layer='below'
+                        )
                 
-                if not hit_t1:
-                    fig.add_shape(
-                        type='rect',
-                        x0=sig_date, x1=end_date,
-                        y0=min(sig['entry'], sig['sl']),
-                        y1=max(sig['entry'], sig['sl']),
-                        fillcolor='rgba(255,68,68,0.15)',
-                        line=dict(color='rgba(255,68,68,0.6)', width=1),
-                        layer='below'
-                    )
                 
-                if hit_t1:
-                    outcome_text = "WON"
-                    outcome_color = '#00ff88'
-                elif hit_sl:
-                    outcome_text = "LOST"
-                    outcome_color = '#ff4444'
-                else:
-                    outcome_text = "OPEN"
-                    outcome_color = '#ffaa00'
-                
-                fig.add_annotation(
-                    x=end_date, y=sig['entry'],
-                    text=outcome_text,
-                    showarrow=False,
-                    xanchor='left',
-                    font=dict(color=outcome_color, size=9, family='Arial'),
-                    bgcolor='rgba(0,0,0,0.6)',
-                    bordercolor=outcome_color,
-                    borderwidth=1
-                )
     fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['RSI'],
                              name="RSI", line=dict(color='#ffaa00', width=1.5)), row=2, col=1)
     fig.add_hline(y=70, line=dict(color='#ff4444', width=1, dash='dot'), row=2, col=1)

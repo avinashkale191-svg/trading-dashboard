@@ -864,14 +864,14 @@ with tab1:
         )
 
     if show_sr:
-        for lvl in res_levels[-5:]:
+        for lvl in res_levels[-8:]:
             fig.add_shape(type='line', xref='x', yref='y',
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color='rgba(255,68,68,0.5)', width=1, dash='dot'))
             fig.add_annotation(x=x_end, y=lvl['price'], xref='x', yref='y',
                                text=f"R {lvl['price']:.2f}", showarrow=False, xanchor='left',
                                font=dict(color='#ff4444', size=10), bgcolor='#000000')
-        for lvl in sup_levels[-5:]:
+        for lvl in sup_levels[-8:]:
             fig.add_shape(type='line', xref='x', yref='y',
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color='rgba(0,255,136,0.5)', width=1, dash='dot'))

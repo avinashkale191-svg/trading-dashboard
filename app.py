@@ -14,6 +14,13 @@ try:
 except Exception:
     NSELIB_AVAILABLE = False
 
+
+# Upstox integration
+try:
+    from upstox_data import get_spot_quote, get_option_chain, compute_max_pain
+    UPSTOX_AVAILABLE = True
+except Exception:
+    UPSTOX_AVAILABLE = False
 st.set_page_config(page_title="Trading Dashboard", page_icon="📈", layout="wide")
 
 # =========================================================================

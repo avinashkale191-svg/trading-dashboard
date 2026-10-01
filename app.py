@@ -538,6 +538,54 @@ sma_s = df['SMA_Slow'].iloc[-1]
 trend_label, trend_color, trend_score = calc_trend(df, sma_f, sma_s)
 
 # =========================================================================
+# HTF DATA FETCH (1H + 1D)
+# =========================================================================
+@st.cache_data(ttl=60)
+def fetch_htf_bias(symbol, tf):
+    """Fetch HTF data and compute simple bias."""
+    try:
+        htf_df = yf.download(symbol, period="5d" if tf == "1h" else "3mo",
+                             interval=tf, progress=False, auto_adjust=False)
+        if htf_df is None or len(htf_df) < 55:
+            return "FLAT", 0, "WAIT"
+        if isinstance(htf_df.columns, pd.MultiIndex):
+            htf_df.columns = htf_df.columns.get_level_values(0)
+        htf_df = htf_df.reset_index()
+
+        sma_f_h = htf_df['Close'].rolling(20).mean().iloc[-1]
+        sma_s_h = htf_df['Close'].rolling(50).mean().iloc[-1]
+        close_now_h = htf_df['Close'].iloc[-1]
+        rsi_now_h = calc_rsi(htf_df['Close'], 14).iloc[-1]
+
+        score = 0
+        if close_now_h > sma_f_h and sma_f_h > sma_s_h:
+            score += 2
+        elif close_now_h < sma_f_h and sma_f_h < sma_s_h:
+            score -= 2
+        if not pd.isna(rsi_now_h):
+            if rsi_now_h > 60:
+                score += 1
+            elif rsi_now_h < 40:
+                score -= 1
+        if len(htf_df) > 20:
+            if close_now_h > htf_df['Close'].iloc[-20]:
+                score += 1
+            else:
+                score -= 1
+
+        if score >= 2:
+            return "BULL", score, "BUY"
+        elif score <= -2:
+            return "BEAR", score, "SELL"
+        else:
+            return "FLAT", score, "WAIT"
+    except Exception:
+        return "FLAT", 0, "WAIT"
+
+htf_1h_label, htf_1h_score, htf_1h_signal = fetch_htf_bias(ticker_symbol, "1h")
+htf_1d_label, htf_1d_score, htf_1d_signal = fetch_htf_bias(ticker_symbol, "1d")
+
+# =========================================================================
 # TOP METRICS
 # =========================================================================
 c1, c2, c3, c4, c5 = st.columns(5)

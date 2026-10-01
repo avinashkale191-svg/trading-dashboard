@@ -840,24 +840,24 @@ with tab1:
         r_color = 'rgba(255,136,0,0.6)'
         fig.add_shape(
             type='line', xref='x', yref='y',
-            x0=x_start, x1=x_end, y0=rangeHigh, y1=rangeHigh,
+            x0=x_start, x1=x_end, y0=float(latest['High']), y1=float(latest['High']),
             line=dict(color=r_color, width=1, dash='dot')
         )
         fig.add_annotation(
-            x=x_end, y=rangeHigh, xref='x', yref='y',
-            text=f"Range High {rangeHigh:.2f}",
+            x=x_end, y=float(latest['High']), xref='x', yref='y',
+            text=f"Range High {float(latest['High']):.2f}",
             showarrow=False, xanchor='left',
             font=dict(color='#ff8800', size=10),
             bgcolor='#000000'
         )
         fig.add_shape(
             type='line', xref='x', yref='y',
-            x0=x_start, x1=x_end, y0=rangeLow, y1=rangeLow,
+            x0=x_start, x1=x_end, y0=float(latest['Low']), y1=float(latest['Low']),
             line=dict(color=r_color, width=1, dash='dot')
         )
         fig.add_annotation(
-            x=x_end, y=rangeLow, xref='x', yref='y',
-            text=f"Range Low {rangeLow:.2f}",
+            x=x_end, y=float(latest['Low']), xref='x', yref='y',
+            text=f"Range Low {float(latest['Low']):.2f}",
             showarrow=False, xanchor='left',
             font=dict(color='#ff8800', size=10),
             bgcolor='#000000'

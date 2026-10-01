@@ -547,15 +547,43 @@ c3.metric("Order Flow", f"{float(latest['OrderFlow']):,.0f}" if not pd.isna(late
 c4.metric("Nearest BSL", f"{bsl[-1]['price']:.2f}" if bsl else "—")
 c5.metric("Nearest SSL", f"{ssl[-1]['price']:.2f}" if ssl else "—")
 
+# =========================================================================
+# TOP BANNER (v14.1 style)
+# =========================================================================
+banner_text = "WAIT"
+banner_color = "#ffaa00"
+banner_detail = ""
+
+if trend_score >= 5:
+    banner_text = "BULLISH BIAS"
+    banner_color = "#00ff88"
+    banner_detail = f"Bias +{trend_score} — Wait for SSL hunt or BOS up"
+elif trend_score <= -5:
+    banner_text = "BEARISH BIAS"
+    banner_color = "#ff4444"
+    banner_detail = f"Bias {trend_score} — Wait for BSL hunt or BOS down"
+elif trend_score >= 2:
+    banner_text = "MILD BULLISH"
+    banner_color = "#88ff88"
+    banner_detail = f"Bias +{trend_score} — Wait for confirmation"
+elif trend_score <= -2:
+    banner_text = "MILD BEARISH"
+    banner_color = "#ff8888"
+    banner_detail = f"Bias {trend_score} — Wait for confirmation"
+else:
+    banner_text = "NO CLEAR BIAS"
+    banner_color = "#ffaa00"
+    banner_detail = f"Bias {trend_score} — Wait for setup"
+
 st.markdown(
-    f"""<div style="background:{trend_color}22;border-left:6px solid {trend_color};
-    padding:12px 20px;border-radius:8px;margin:12px 0;">
-    <span style="color:{trend_color};font-size:20px;font-weight:bold;">
-    📊 MARKET TREND: {trend_label}
-    </span>
-    <span style="color:#aaa;font-size:14px;margin-left:20px;">
-    Score: {trend_score:+d} | Interval: {interval} | Period: {period}
-    </span></div>""",
+    f"""<div style="background:{banner_color}22;border-left:6px solid {banner_color};
+    padding:14px 22px;border-radius:8px;margin:14px 0;">
+    <div style="color:{banner_color};font-size:22px;font-weight:bold;">
+    ⚡ {banner_text}
+    </div>
+    <div style="color:#ccc;font-size:14px;margin-top:4px;">
+    {banner_detail} | Trend: {trend_label} | Interval: {interval}
+    </div></div>""",
     unsafe_allow_html=True
 )
 

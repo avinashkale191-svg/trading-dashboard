@@ -238,22 +238,23 @@ def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
     }
     upstox_interval = interval_map.get(interval, "1minute")
 
-    url = f"{BASE_URL}/historical-candle/{symbol}/{upstox_interval}"
+    encoded_symbol = symbol.replace("|", "%7C")
 
     from_date_obj = datetime.now() - pd.Timedelta(days=days)
     from_date = from_date_obj.strftime("%Y-%m-%d")
     to_date = datetime.now().strftime("%Y-%m-%d")
 
-    full_url = f"{url}/{to_date}/{from_date}/{to_date}"
+    url = f"{BASE_URL}/historical-candle/{encoded_symbol}/{upstox_interval}/{to_date}/{from_date}"
 
     try:
-        r = requests.get(full_url, headers=get_headers(), timeout=15)
+        r = requests.get(url, headers=get_headers(), timeout=15)
         if r.status_code != 200:
-            print(f"Candles error: {r.status_code} - {r.text[:200]}")
+            print(f"Candles error: {r.status_code} - {r.text[:300]}")
             return None
 
         candles = r.json().get("data", {}).get("candles", [])
         if not candles:
+            print("No candles returned")
             return None
 
         df = pd.DataFrame(candles, columns=["Date", "Open", "High", "Low", "Close", "Volume", "OI"])
@@ -264,7 +265,6 @@ def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
     except Exception as e:
         print(f"Candles exception: {e}")
         return None
-
 # =========================================================================
 # 5. TEST
 # =========================================================================

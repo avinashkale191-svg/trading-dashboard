@@ -833,6 +833,36 @@ with tab1:
                     showlegend=False,
                 ), row=1, col=1)
 
+    # =====================================================================
+    # RANGE HIGH / LOW LINES + LABELS
+    # =====================================================================
+    if drawRangeLines:
+        r_color = 'rgba(255,136,0,0.6)'
+        fig.add_shape(
+            type='line', xref='x', yref='y',
+            x0=x_start, x1=x_end, y0=rangeHigh, y1=rangeHigh,
+            line=dict(color=r_color, width=1, dash='dot')
+        )
+        fig.add_annotation(
+            x=x_end, y=rangeHigh, xref='x', yref='y',
+            text=f"Range High {rangeHigh:.2f}",
+            showarrow=False, xanchor='left',
+            font=dict(color='#ff8800', size=10),
+            bgcolor='#000000'
+        )
+        fig.add_shape(
+            type='line', xref='x', yref='y',
+            x0=x_start, x1=x_end, y0=rangeLow, y1=rangeLow,
+            line=dict(color=r_color, width=1, dash='dot')
+        )
+        fig.add_annotation(
+            x=x_end, y=rangeLow, xref='x', yref='y',
+            text=f"Range Low {rangeLow:.2f}",
+            showarrow=False, xanchor='left',
+            font=dict(color='#ff8800', size=10),
+            bgcolor='#000000'
+        )
+
     if show_sr:
         for lvl in res_levels[-2:]:
             fig.add_shape(type='line', xref='x', yref='y',

@@ -585,6 +585,12 @@ def fetch_htf_bias(symbol, tf):
 htf_1h_label, htf_1h_score, htf_1h_signal = fetch_htf_bias(ticker_symbol, "1h")
 htf_1d_label, htf_1d_score, htf_1d_signal = fetch_htf_bias(ticker_symbol, "1d")
 
+
+# MTF timeframes (short-term)
+mtf_1m_label, mtf_1m_score, mtf_1m_signal = fetch_htf_bias(ticker_symbol, "1m")
+mtf_5m_label, mtf_5m_score, mtf_5m_signal = fetch_htf_bias(ticker_symbol, "5m")
+mtf_15m_label, mtf_15m_score, mtf_15m_signal = fetch_htf_bias(ticker_symbol, "15m")
+
 # =========================================================================
 # TOP METRICS
 # =========================================================================

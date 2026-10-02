@@ -1036,8 +1036,7 @@ with tab1:
     of_colors = ['#ff4444' if v < 0 else '#00ff88' for v in df_display['OrderFlow'].fillna(0)]
     fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['OrderFlow'],
                          name="Order Flow", marker_color=of_colors), row=3, col=1)
-        vol_colors = ['#ff4444' if c < o else '#00ff88'
-                  for o, c in zip(df_display['Open'], df_display['Close'])]
+    vol_colors = ['#ff4444' if c < o else '#00ff88' for o, c in zip(df_display['Open'], df_display['Close'])]
     fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['Volume'],
                          name="Volume", marker_color=vol_colors), row=4, col=1)
 

@@ -587,6 +587,25 @@ c4.metric("Nearest BSL", f"{bsl[-1]['price']:.2f}" if bsl else "—")
 c5.metric("Nearest SSL", f"{ssl[-1]['price']:.2f}" if ssl else "—")
 
 # =========================================================================
+# CURRENT TF PANEL (top-right summary)
+# =========================================================================
+_trend_strength = "STRONG" if abs(trend_score) >= 5 else "MODERATE" if abs(trend_score) >= 3 else "WEAK"
+_tf_rsi_val = float(latest['RSI']) if not pd.isna(latest['RSI']) else 0.0
+_tf_color = "#00ff88" if trend_score >= 2 else "#ff4444" if trend_score <= -2 else "#ffaa00"
+
+st.markdown(
+    f"""<div style="background:#131722;border:2px solid {_tf_color};border-radius:8px;padding:10px 16px;margin:10px 0;">
+    <div style="color:#aaa;font-size:11px;font-weight:bold;margin-bottom:6px;">CURRENT TF ({interval})</div>
+    <div style="color:{_tf_color};font-size:18px;font-weight:bold;">
+    {trend_label} <span style="font-size:14px;color:#ddd;">({trend_score:+d})</span>
+    </div>
+    <div style="color:#ccc;font-size:13px;margin-top:4px;">
+    RSI: <b>{_tf_rsi_val:.1f}</b> &nbsp;|&nbsp; Trend: <b>{_trend_strength}</b>
+    </div></div>""",
+    unsafe_allow_html=True
+)
+
+# =========================================================================
 # HTF PANEL DISPLAY (1H + 1D)
 # =========================================================================
 htf_1h_color = "#00ff88" if htf_1h_label == "BULL" else "#ff4444" if htf_1h_label == "BEAR" else "#ffaa00"

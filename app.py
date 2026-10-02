@@ -543,14 +543,11 @@ trend_label, trend_color, trend_score = calc_trend(df, sma_f, sma_s)
 def fetch_htf_bias(symbol, tf):
     """Fetch HTF data and compute simple bias."""
     try:
-        htf_df = yf.download(symbol, period="5d" if tf == "1h" else "3mo",
-                             interval=tf, progress=False, auto_adjust=False)
+                from upstox_data import fetch_candles as _fc
+        _days = 5 if tf == "1h" else 90
+        htf_df = _fc(symbol=symbol, interval=tf, days=_days)
         if htf_df is None or len(htf_df) < 55:
             return "FLAT", 0, "WAIT"
-        if isinstance(htf_df.columns, pd.MultiIndex):
-            htf_df.columns = htf_df.columns.get_level_values(0)
-        htf_df = htf_df.reset_index()
-
         sma_f_h = htf_df['Close'].rolling(20).mean().iloc[-1]
         sma_s_h = htf_df['Close'].rolling(50).mean().iloc[-1]
         close_now_h = htf_df['Close'].iloc[-1]

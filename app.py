@@ -769,10 +769,10 @@ tab1, tab2, tab3, tab4 = st.tabs(["📊 Chart", "💧 SMC Liquidity", "🏦 Smar
 # TAB 1: CHART
 # -------------------------------------------------------------------------
 with tab1:
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
-                        row_heights=[0.65, 0.20, 0.15],
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True,
+                        row_heights=[0.55, 0.18, 0.15, 0.12],
                         vertical_spacing=0.02,
-                        subplot_titles=("", "RSI", "Order Flow"))
+                        subplot_titles=("", "RSI", "Order Flow", "Volume"))
 
     fig.add_trace(go.Candlestick(
         x=df_display['Date'], open=df_display['Open'], high=df_display['High'],
@@ -1036,6 +1036,10 @@ with tab1:
     of_colors = ['#ff4444' if v < 0 else '#00ff88' for v in df_display['OrderFlow'].fillna(0)]
     fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['OrderFlow'],
                          name="Order Flow", marker_color=of_colors), row=3, col=1)
+        vol_colors = ['#ff4444' if c < o else '#00ff88'
+                  for o, c in zip(df_display['Open'], df_display['Close'])]
+    fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['Volume'],
+                         name="Volume", marker_color=vol_colors), row=4, col=1)
 
     fig.update_layout(height=800, template="plotly_dark",
                       paper_bgcolor='#131722', plot_bgcolor='#131722',

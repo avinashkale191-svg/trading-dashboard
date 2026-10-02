@@ -67,51 +67,19 @@ st.sidebar.subheader("📊 Select Asset")
 
 asset_options = {
     "--- INDIAN INDICES ---": None,
-    "NIFTY 50": "^NSEI",
-    "SENSEX": "^BSESN",
-    "BANK NIFTY": "^NSEBANK",
-    "INDIA VIX": "^INDIAVIX",
+    "NIFTY 50": "NSE_INDEX|Nifty 50",
+    "BANK NIFTY": "NSE_INDEX|Nifty Bank",
+    "SENSEX": "BSE_INDEX|SENSEX",
+    "INDIA VIX": "NSE_INDEX|India VIX",
     "--- INDIAN STOCKS ---": None,
-    "RELIANCE": "RELIANCE.NS",
-    "TCS": "TCS.NS",
-    "INFY": "INFY.NS",
-    "HDFCBANK": "HDFCBANK.NS",
-    "SBIN": "SBIN.NS",
-    "ITC": "ITC.NS",
-    "TATAMOTORS": "TATAMOTORS.NS",
-    "--- US STOCKS ---": None,
-    "Apple": "AAPL",
-    "Tesla": "TSLA",
-    "Microsoft": "MSFT",
-    "NVIDIA": "NVDA",
-    "Amazon": "AMZN",
-    "Google": "GOOGL",
-    "Meta": "META",
-    "--- GLOBAL INDICES ---": None,
-    "S&P 500": "^GSPC",
-    "Nasdaq": "^IXIC",
-    "Dow Jones": "^DJI",
-    "Nikkei 225": "^N225",
-    "FTSE 100": "^FTSE",
-    "DAX": "^GDAXI",
-    "Hang Seng": "^HSI",
-    "--- COMMODITIES ---": None,
-    "Gold": "GC=F",
-    "Silver": "SI=F",
-    "Crude Oil": "CL=F",
-    "Natural Gas": "NG=F",
-    "Copper": "HG=F",
-    "--- FOREX ---": None,
-    "USD/INR": "USDINR=X",
-    "EUR/USD": "EURUSD=X",
-    "GBP/USD": "GBPUSD=X",
-    "USD/JPY": "JPY=X",
-    "--- CRYPTO ---": None,
-    "Bitcoin": "BTC-USD",
-    "Ethereum": "ETH-USD",
-    "Solana": "SOL-USD",
+    "RELIANCE": "NSE_EQ|INE002A01018",
+    "TCS": "NSE_EQ|INE467B01029",
+    "INFY": "NSE_EQ|INE009A01021",
+    "HDFCBANK": "NSE_EQ|INE040A01034",
+    "SBIN": "NSE_EQ|INE062A01020",
+    "ITC": "NSE_EQ|INE154A01025",
+    "TATAMOTORS": "NSE_EQ|INE155A01022",
 }
-
 valid_options = {k: v for k, v in asset_options.items() if v is not None}
 selected_label = st.sidebar.selectbox("Select Asset", list(valid_options.keys()))
 ticker_symbol = valid_options[selected_label]
@@ -202,74 +170,55 @@ show_rr_boxes = st.sidebar.checkbox("R:R Boxes", value=False)
 # DATA FETCH
 # =========================================================================
 def fetch_data(symbol, period, interval, refresh_key):
-    """Fetch OHLC candles.
-    - Indian indices & stocks -> Upstox (matches TradingView)
-    - US / global / forex / crypto -> Yahoo Finance
+    """Fetch OHLC candles. Upstox-only for Indian symbols.
+    Symbol from dropdown is ALREADY the Upstox instrument key.
     """
     try:
         from upstox_data import fetch_candles
     except Exception as _imp:
         print(f"Could not import fetch_candles: {_imp}")
-        fetch_candles = None
-
-    # ---- Map app symbol -> Upstox instrument key ----
-    UPSTOX_MAP = {
-        # Indian Indices
-        "NSEI":         "NSE_INDEX|Nifty 50",
-        "NIFTY 50":     "NSE_INDEX|Nifty 50",
-        "NSEBANK":      "NSE_INDEX|Nifty Bank",
-        "BANK NIFTY":   "NSE_INDEX|Nifty Bank",
-        "BSESN":        "BSE_INDEX|SENSEX",
-        "SENSEX":       "BSE_INDEX|SENSEX",
-        "INDIAVIX":     "NSE_INDEX|India VIX",
-        "INDIA VIX":    "NSE_INDEX|India VIX",
-        # Indian Stocks (via ISIN)
-        "RELIANCE":     "NSE_EQ|INE002A01018",
-        "TCS":          "NSE_EQ|INE467B01029",
-        "INFY":         "NSE_EQ|INE009A01021",
-        "HDFCBANK":     "NSE_EQ|INE040A01034",
-        "SBIN":         "NSE_EQ|INE062A01020",
-        "ITC":          "NSE_EQ|INE154A01025",
-        "TATAMOTORS":   "NSE_EQ|INE155A01022",
-    }
-
-    # Normalize: strip Yahoo suffix/prefix, uppercase
-    sym_key = str(symbol).upper().replace("^", "").replace(".NS", "").replace(".BO", "").strip()
-    up_symbol = UPSTOX_MAP.get(sym_key)
-
-    # ---- Upstox first (Indian symbols) ----
-    if up_symbol and fetch_candles:
-        up_interval = interval if interval in ["1m", "5m", "15m", "30m", "1h", "1d"] else "1m"
-        try:
-            df_up = fetch_candles(symbol=up_symbol, interval=up_interval, days=10)
-            if df_up is not None and not df_up.empty:
-                df_up = df_up.dropna(subset=["Open", "High", "Low", "Close"])
-                if not df_up.empty:
-                    return df_up
-            print(f"Upstox returned no data for {up_symbol}")
-        except Exception as _e:
-            print(f"Upstox fetch failed for {up_symbol}: {_e}")
-
-    # ---- Yahoo fallback (non-Indian symbols) ----
-    try:
-        df = yf.download(symbol, period=period, interval=interval, progress=False, auto_adjust=False)
-        if df is None or df.empty:
-            return None
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        df = df.reset_index()
-        if 'Datetime' in df.columns and 'Date' not in df.columns:
-            df = df.rename(columns={'Datetime': 'Date'})
-        required = ['Date', 'Open', 'High', 'Low', 'Close']
-        for col in required:
-            if col not in df.columns:
-                return None
-        df = df.dropna(subset=['Open', 'High', 'Low', 'Close'])
-        return df
-    except Exception as e:
-        print(f"Yahoo fetch failed: {e}")
         return None
 
+    # ---- Direct instrument key (from new asset_options) ----
+    up_symbol = str(symbol).strip()
+
+    # If someone types a plain name in "Custom Ticker", try to map it
+    if "|" not in up_symbol:
+        fallback_map = {
+            "NIFTY": "NSE_INDEX|Nifty 50",
+            "NIFTY 50": "NSE_INDEX|Nifty 50",
+            "NSEI": "NSE_INDEX|Nifty 50",
+            "BANKNIFTY": "NSE_INDEX|Nifty Bank",
+            "BANK NIFTY": "NSE_INDEX|Nifty Bank",
+            "NSEBANK": "NSE_INDEX|Nifty Bank",
+            "SENSEX": "BSE_INDEX|SENSEX",
+            "BSESN": "BSE_INDEX|SENSEX",
+            "INDIA VIX": "NSE_INDEX|India VIX",
+            "INDIAVIX": "NSE_INDEX|India VIX",
+            "RELIANCE": "NSE_EQ|INE002A01018",
+            "TCS": "NSE_EQ|INE467B01029",
+            "INFY": "NSE_EQ|INE009A01021",
+            "HDFCBANK": "NSE_EQ|INE040A01034",
+            "SBIN": "NSE_EQ|INE062A01020",
+            "ITC": "NSE_EQ|INE154A01025",
+            "TATAMOTORS": "NSE_EQ|INE155A01022",
+        }
+        up_symbol = fallback_map.get(up_symbol.upper(), up_symbol)
+
+    up_interval = interval if interval in ["1m", "5m", "15m", "30m", "1h", "1d"] else "1m"
+
+    # ---- Fetch candles from Upstox ----
+    try:
+        df = fetch_candles(symbol=up_symbol, interval=up_interval, days=10)
+        if df is not None and not df.empty:
+            df = df.dropna(subset=["Open", "High", "Low", "Close"])
+            if not df.empty:
+                return df
+        print(f"Upstox returned no data for {up_symbol}")
+        return None
+    except Exception as e:
+        print(f"Upstox fetch failed for {up_symbol}: {e}")
+        return None
 # =========================================================================
 # INDICATORS
 # =========================================================================

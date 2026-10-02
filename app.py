@@ -54,7 +54,7 @@ if auto_refresh:
     st.markdown(
         """
         <script>
-        setTimeout(function() { window.location.reload(); }, 30000);
+        setTimeout(function() { window.location.reload(); }, 15000);
         </script>
         """,
         unsafe_allow_html=True

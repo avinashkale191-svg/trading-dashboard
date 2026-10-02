@@ -253,20 +253,7 @@ def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
         df = df[["Date", "Open", "High", "Low", "Close", "Volume"]]
         return df
 
-    # ---- Try INTRADAY endpoint first (today's live candles) ----
-    try:
-        intraday_url = f"{BASE_URL}/historical-candle/intraday/{encoded_symbol}/{upstox_interval}"
-        r = requests.get(intraday_url, headers=get_headers(), timeout=15)
-        if r.status_code == 200:
-            df = _parse(r.json())
-            if df is not None and not df.empty:
-                return df
-        else:
-            print(f"Intraday endpoint {r.status_code} — falling back to historical")
-    except Exception as e:
-        print(f"Intraday exception: {e}")
-
-    # ---- Fallback: HISTORICAL endpoint ----
+    # ---- HISTORICAL endpoint FIRST (always has data) ----
     from_date_obj = datetime.now() - pd.Timedelta(days=days)
     from_date = from_date_obj.strftime("%Y-%m-%d")
     to_date = datetime.now().strftime("%Y-%m-%d")
@@ -275,13 +262,31 @@ def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
 
     try:
         r = requests.get(hist_url, headers=get_headers(), timeout=15)
-        if r.status_code != 200:
+        if r.status_code == 200:
+            df = _parse(r.json())
+            if df is not None and not df.empty:
+                return df
+            print(f"Historical returned empty for {encoded_symbol}")
+        else:
             print(f"Historical error: {r.status_code} - {r.text[:200]}")
-            return None
-        return _parse(r.json())
     except Exception as e:
         print(f"Historical exception: {e}")
-        return None
+
+    # ---- Fallback: INTRADAY endpoint (live today) ----
+    try:
+        intraday_url = f"{BASE_URL}/historical-candle/intraday/{encoded_symbol}/{upstox_interval}"
+        r = requests.get(intraday_url, headers=get_headers(), timeout=15)
+        if r.status_code == 200:
+            df = _parse(r.json())
+            if df is not None and not df.empty:
+                return df
+            print(f"Intraday returned empty for {encoded_symbol}")
+        else:
+            print(f"Intraday error: {r.status_code} - {r.text[:200]}")
+    except Exception as e:
+        print(f"Intraday exception: {e}")
+
+    return None    
 # =========================================================================
 # 5. TEST
 # =========================================================================

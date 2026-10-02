@@ -893,6 +893,39 @@ with tab1:
             fig.add_shape(type='line', xref='x', yref='y',
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color=color, width=1, dash=dash))
+                    # ---- Sweep X marks ----
+        for lvl in bsl:
+            if lvl.get('swept') and 'sweep_bar' in lvl:
+                sb = lvl['sweep_bar']
+                if sb >= bars_offset:
+                    idx = sb - bars_offset
+                    if idx < len(df_display):
+                        x_date = df_display['Date'].iloc[idx]
+                        y_price = float(df_display['High'].iloc[idx]) * 1.001
+                        fig.add_trace(go.Scatter(
+                            x=[x_date], y=[y_price],
+                            mode='markers',
+                            marker=dict(color='#ff4444', size=14, symbol='x',
+                                       line=dict(color='#ff4444', width=2)),
+                            showlegend=False,
+                            hovertemplate=f"BSL Swept<br>Price: {lvl['price']:.2f}<extra></extra>"
+                        ), row=1, col=1)
+        for lvl in ssl:
+            if lvl.get('swept') and 'sweep_bar' in lvl:
+                sb = lvl['sweep_bar']
+                if sb >= bars_offset:
+                    idx = sb - bars_offset
+                    if idx < len(df_display):
+                        x_date = df_display['Date'].iloc[idx]
+                        y_price = float(df_display['Low'].iloc[idx]) * 0.999
+                        fig.add_trace(go.Scatter(
+                            x=[x_date], y=[y_price],
+                            mode='markers',
+                            marker=dict(color='#00ff88', size=14, symbol='x',
+                                       line=dict(color='#00ff88', width=2)),
+                            showlegend=False,
+                            hovertemplate=f"SSL Swept<br>Price: {lvl['price']:.2f}<extra></extra>"
+                        ), row=1, col=1)
 
     if show_bos:
         for evt in bos_events:

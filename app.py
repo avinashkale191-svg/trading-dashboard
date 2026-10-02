@@ -319,30 +319,44 @@ def find_trend_lines(df, pivot_len=8):
 
     trend_lines = []
 
+        # ---- Resistance trend lines (up to 5) ----
     if len(swing_highs) >= 2:
-        for offset in range(0, min(3, len(swing_highs) - 1)):
+        _last_picked_h = None
+        for offset in range(0, min(6, len(swing_highs) - 1)):
             h1 = swing_highs[-(2 + offset)]
             h2 = swing_highs[-(1 + offset)]
-            if abs(h2['idx'] - h1['idx']) >= 3:
-                trend_lines.append({
-                    'type': 'resistance',
-                    'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
-                    'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
-                })
+            if abs(h2['idx'] - h1['idx']) < 3:
+                continue
+            if _last_picked_h is not None and abs(h2['price'] - _last_picked_h) < (h2['price'] * 0.002):
+                continue
+            trend_lines.append({
+                'type': 'resistance',
+                'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
+                'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
+            })
+            _last_picked_h = h2['price']
+            if sum(1 for t in trend_lines if t['type'] == 'resistance') >= 5:
                 break
 
+    # ---- Support trend lines (up to 5) ----
     if len(swing_lows) >= 2:
-        for offset in range(0, min(3, len(swing_lows) - 1)):
+        _last_picked_l = None
+        for offset in range(0, min(6, len(swing_lows) - 1)):
             l1 = swing_lows[-(2 + offset)]
             l2 = swing_lows[-(1 + offset)]
-            if abs(l2['idx'] - l1['idx']) >= 3:
-                trend_lines.append({
-                    'type': 'support',
-                    'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
-                    'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
-                })
+            if abs(l2['idx'] - l1['idx']) < 3:
+                continue
+            if _last_picked_l is not None and abs(l1['price'] - _last_picked_l) < (l1['price'] * 0.002):
+                continue
+            trend_lines.append({
+                'type': 'support',
+                'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
+                'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
+            })
+            _last_picked_l = l1['price']
+            if sum(1 for t in trend_lines if t['type'] == 'support') >= 5:
                 break
-
+                
     return trend_lines
 
 def calc_trend(df, sma_f, sma_s):

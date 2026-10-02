@@ -228,42 +228,59 @@ def compute_max_pain(df):
 # CANDLES (OHLC) — for chart
 # =========================================================================
 def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
-    """Fetch OHLC candles from Upstox."""
+    """Fetch OHLC candles from Upstox.
+    Tries INTRADAY endpoint first (live today),
+    falls back to HISTORICAL endpoint (older dates).
+    """
     if not UPSTOX_TOKEN:
         return None
 
     interval_map = {
         "1m": "1minute", "5m": "5minute", "15m": "15minute",
-        "30m": "30minute", "1h": "60minute", "1d": "day"
+        "30m": "30minute", "1h": "60minute", "1d": "day",
     }
     upstox_interval = interval_map.get(interval, "1minute")
 
     encoded_symbol = symbol.replace("|", "%7C")
 
-    from_date_obj = datetime.now() - pd.Timedelta(days=days)
-    from_date = from_date_obj.strftime("%Y-%m-%d")
-    to_date = datetime.now().strftime("%Y-%m-%d")
-
-    url = f"{BASE_URL}/historical-candle/{encoded_symbol}/{upstox_interval}/{to_date}/{from_date}"
-
-    try:
-        r = requests.get(url, headers=get_headers(), timeout=15)
-        if r.status_code != 200:
-            print(f"Candles error: {r.status_code} - {r.text[:300]}")
-            return None
-
-        candles = r.json().get("data", {}).get("candles", [])
+    def _parse(json_data):
+        candles = json_data.get("data", {}).get("candles", [])
         if not candles:
-            print("No candles returned")
             return None
-
         df = pd.DataFrame(candles, columns=["Date", "Open", "High", "Low", "Close", "Volume", "OI"])
         df["Date"] = pd.to_datetime(df["Date"])
         df = df.sort_values("Date").reset_index(drop=True)
         df = df[["Date", "Open", "High", "Low", "Close", "Volume"]]
         return df
+
+    # ---- Try INTRADAY endpoint first (today's live candles) ----
+    try:
+        intraday_url = f"{BASE_URL}/historical-candle/intraday/{encoded_symbol}/{upstox_interval}"
+        r = requests.get(intraday_url, headers=get_headers(), timeout=15)
+        if r.status_code == 200:
+            df = _parse(r.json())
+            if df is not None and not df.empty:
+                return df
+        else:
+            print(f"Intraday endpoint {r.status_code} — falling back to historical")
     except Exception as e:
-        print(f"Candles exception: {e}")
+        print(f"Intraday exception: {e}")
+
+    # ---- Fallback: HISTORICAL endpoint ----
+    from_date_obj = datetime.now() - pd.Timedelta(days=days)
+    from_date = from_date_obj.strftime("%Y-%m-%d")
+    to_date = datetime.now().strftime("%Y-%m-%d")
+
+    hist_url = f"{BASE_URL}/historical-candle/{encoded_symbol}/{upstox_interval}/{to_date}/{from_date}"
+
+    try:
+        r = requests.get(hist_url, headers=get_headers(), timeout=15)
+        if r.status_code != 200:
+            print(f"Historical error: {r.status_code} - {r.text[:200]}")
+            return None
+        return _parse(r.json())
+    except Exception as e:
+        print(f"Historical exception: {e}")
         return None
 # =========================================================================
 # 5. TEST

@@ -207,7 +207,8 @@ def fetch_data(symbol, period, interval, refresh_key):
     up_interval = interval if interval in ["1m", "5m", "15m", "30m", "1h", "1d"] else "1m"
 
     try:
-        df = fetch_candles(symbol=up_symbol, interval=up_interval, days=10)
+        _lookback = {"1m": 5, "5m": 15, "15m": 30, "30m": 60, "1h": 180, "1d": 365}.get(up_interval, 10)
+        df = fetch_candles(symbol=up_symbol, interval=up_interval, days=_lookback)
         if df is not None and not df.empty:
             df = df.dropna(subset=["Open", "High", "Low", "Close"])
             if not df.empty:

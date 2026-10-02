@@ -1050,6 +1050,64 @@ with tab1:
         'scrollZoom': True, 'displayModeBar': True, 'displaylogo': False
     })
 
+    # =====================================================================
+    # SIGNAL HISTORY TABLE (last 10 signals with status)
+    # =====================================================================
+    st.markdown("---")
+    st.subheader("📋 Signal History")
+
+    if signals:
+        _hist_rows = []
+        for _sig in signals[-10:]:
+            _bar_i = _sig['bar']
+            _is_buy = _sig['type'] == 'BUY'
+            _entry = _sig['entry']
+            _sl = _sig['sl']
+            _t1 = _sig['t1']
+            _t2 = _sig['t2']
+
+            _status = "ACTIVE"
+            for _j in range(_bar_i + 1, len(df)):
+                _h = df['High'].iloc[_j]
+                _l = df['Low'].iloc[_j]
+                if _is_buy:
+                    if _l <= _sl:
+                        _status = "LOST"
+                        break
+                    if _h >= _t2:
+                        _status = "WON-T2"
+                        break
+                    if _h >= _t1:
+                        _status = "WON-T1"
+                        break
+                else:
+                    if _h >= _sl:
+                        _status = "LOST"
+                        break
+                    if _l <= _t2:
+                        _status = "WON-T2"
+                        break
+                    if _l <= _t1:
+                        _status = "WON-T1"
+                        break
+
+            _hist_rows.append({
+                'Date': str(_sig['date'])[:16],
+                'Type': _sig['type'],
+                'Entry': f"{_entry:.2f}",
+                'SL': f"{_sl:.2f}",
+                'T1': f"{_t1:.2f}",
+                'T2': f"{_t2:.2f}",
+                'Status': _status,
+            })
+
+        _hist_df = pd.DataFrame(_hist_rows).iloc[::-1]
+        st.dataframe(_hist_df, use_container_width=True, hide_index=True)
+        st.caption(f"Last {len(_hist_rows)} signals | Data: Upstox")
+    else:
+        st.info("No signals detected in this timeframe.")
+
+
 # -------------------------------------------------------------------------
 # TAB 2: SMC LIQUIDITY
 # -------------------------------------------------------------------------

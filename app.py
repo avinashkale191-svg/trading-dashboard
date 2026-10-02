@@ -622,4 +622,516 @@ st.markdown(
 # =========================================================================
 mtf_1m_color = "#00ff88" if mtf_1m_label == "BULL" else "#ff4444" if mtf_1m_label == "BEAR" else "#ffaa00"
 mtf_5m_color = "#00ff88" if mtf_5m_label == "BULL" else "#ff4444" if mtf_5m_label == "BEAR" else "#ffaa00"
-mtf_15m_color =
+mtf_15m_color = "#00ff88" if mtf_15m_label == "BULL" else "#ff4444" if mtf_15m_label == "BEAR" else "#ffaa00"
+
+mtf_1m_dir = "UP" if mtf_1m_score > 0 else "DOWN" if mtf_1m_score < 0 else "FLAT"
+mtf_5m_dir = "UP" if mtf_5m_score > 0 else "DOWN" if mtf_5m_score < 0 else "FLAT"
+mtf_15m_dir = "UP" if mtf_15m_score > 0 else "DOWN" if mtf_15m_score < 0 else "FLAT"
+
+st.markdown(
+    f"""<div style="background:#131722;border:2px solid #2a2e39;border-radius:8px;padding:12px;margin:10px 0;">
+    <div style="color:#aaa;font-size:12px;font-weight:bold;margin-bottom:8px;">📊 MULTI-TIMEFRAME BIAS</div>
+    <table style="width:100%;border-collapse:collapse;color:#d1d4dc;font-size:13px;">
+    <tr style="background:#2a2e39;">
+        <th style="padding:6px;text-align:left;">TF</th>
+        <th style="padding:6px;text-align:center;">BIAS</th>
+        <th style="padding:6px;text-align:center;">SCORE</th>
+        <th style="padding:6px;text-align:center;">SIGNAL</th>
+        <th style="padding:6px;text-align:center;">DIRECTION</th>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">1m</td>
+        <td style="padding:6px;text-align:center;background:{mtf_1m_color}33;color:{mtf_1m_color};font-weight:bold;">{mtf_1m_label}</td>
+        <td style="padding:6px;text-align:center;">{mtf_1m_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{mtf_1m_color}33;color:{mtf_1m_color};font-weight:bold;">{mtf_1m_signal}</td>
+        <td style="padding:6px;text-align:center;">{mtf_1m_dir}</td>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">5m</td>
+        <td style="padding:6px;text-align:center;background:{mtf_5m_color}33;color:{mtf_5m_color};font-weight:bold;">{mtf_5m_label}</td>
+        <td style="padding:6px;text-align:center;">{mtf_5m_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{mtf_5m_color}33;color:{mtf_5m_color};font-weight:bold;">{mtf_5m_signal}</td>
+        <td style="padding:6px;text-align:center;">{mtf_5m_dir}</td>
+    </tr>
+    <tr>
+        <td style="padding:6px;font-weight:bold;">15m</td>
+        <td style="padding:6px;text-align:center;background:{mtf_15m_color}33;color:{mtf_15m_color};font-weight:bold;">{mtf_15m_label}</td>
+        <td style="padding:6px;text-align:center;">{mtf_15m_score:+d}</td>
+        <td style="padding:6px;text-align:center;background:{mtf_15m_color}33;color:{mtf_15m_color};font-weight:bold;">{mtf_15m_signal}</td>
+        <td style="padding:6px;text-align:center;">{mtf_15m_dir}</td>
+    </tr>
+    </table></div>""",
+    unsafe_allow_html=True
+)
+
+# =========================================================================
+# TRENDING / RANGING BADGE
+# =========================================================================
+range_pct_now = 0.5
+is_trending_now = True
+
+if is_trending_now:
+    badge_text = "TRENDING"
+    badge_color = "#00ff88"
+    badge_status = "Signals ACTIVE"
+else:
+    badge_text = "RANGE-BOUND"
+    badge_color = "#ff8800"
+    badge_status = "Signals SUPPRESSED"
+
+vol_badge = "Vol OK"
+
+st.markdown(
+    f"""<div style="background:#131722;border-left:6px solid {badge_color};
+    border-radius:8px;padding:10px 18px;margin:10px 0;
+    display:flex;justify-content:space-between;align-items:center;">
+    <span style="color:{badge_color};font-size:16px;font-weight:bold;">
+    {badge_text}
+    </span>
+    <span style="color:#aaa;font-size:13px;">
+    {badge_status} | Range: {range_pct_now:.2f}% | {vol_badge}
+    </span>
+    </div>""",
+    unsafe_allow_html=True
+)
+
+# =========================================================================
+# TOP BANNER (v14.1 style)
+# =========================================================================
+banner_text = "WAIT"
+banner_color = "#ffaa00"
+banner_detail = ""
+
+if trend_score >= 5:
+    banner_text = "BULLISH BIAS"
+    banner_color = "#00ff88"
+    banner_detail = f"Bias +{trend_score} — Wait for SSL hunt or BOS up"
+elif trend_score <= -5:
+    banner_text = "BEARISH BIAS"
+    banner_color = "#ff4444"
+    banner_detail = f"Bias {trend_score} — Wait for BSL hunt or BOS down"
+elif trend_score >= 2:
+    banner_text = "MILD BULLISH"
+    banner_color = "#88ff88"
+    banner_detail = f"Bias +{trend_score} — Wait for confirmation"
+elif trend_score <= -2:
+    banner_text = "MILD BEARISH"
+    banner_color = "#ff8888"
+    banner_detail = f"Bias {trend_score} — Wait for confirmation"
+else:
+    banner_text = "NO CLEAR BIAS"
+    banner_color = "#ffaa00"
+    banner_detail = f"Bias {trend_score} — Wait for setup"
+
+st.markdown(
+    f"""<div style="background:{banner_color}22;border-left:6px solid {banner_color};
+    padding:14px 22px;border-radius:8px;margin:14px 0;">
+    <div style="color:{banner_color};font-size:22px;font-weight:bold;">
+    ⚡ {banner_text}
+    </div>
+    <div style="color:#ccc;font-size:14px;margin-top:4px;">
+    {banner_detail} | Trend: {trend_label} | Interval: {interval}
+    </div></div>""",
+    unsafe_allow_html=True
+)
+
+df_display = df.tail(show_last_n).copy()
+bars_offset = len(df) - len(df_display)
+x_start = df_display['Date'].iloc[0]
+x_end = df_display['Date'].iloc[-1]
+
+# =========================================================================
+# TABS
+# =========================================================================
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Chart", "💧 SMC Liquidity", "🏦 Smart Money", "📊 Option Chain"])
+
+# -------------------------------------------------------------------------
+# TAB 1: CHART
+# -------------------------------------------------------------------------
+with tab1:
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
+                        row_heights=[0.65, 0.20, 0.15],
+                        vertical_spacing=0.02,
+                        subplot_titles=("", "RSI", "Order Flow"))
+
+    fig.add_trace(go.Candlestick(
+        x=df_display['Date'], open=df_display['Open'], high=df_display['High'],
+        low=df_display['Low'], close=df_display['Close'], name="Price",
+        increasing_line_color='#00ff88', decreasing_line_color='#ff4444',
+        increasing_fillcolor='#00ff88', decreasing_fillcolor='#ff4444',
+        line=dict(width=1)
+    ), row=1, col=1)
+
+    if show_sma:
+        fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['SMA_Fast'],
+                                 name=f"SMA{sma_fast}", line=dict(color='#00aaff', width=1.5)), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['SMA_Slow'],
+                                 name=f"SMA{sma_slow}", line=dict(color='#ff8800', width=1.5)), row=1, col=1)
+
+    if show_trendlines and trend_lines:
+        for tl in trend_lines:
+            color = '#ff4444' if tl['type'] == 'resistance' else '#00ff88'
+            slope_up = tl['y2'] > tl['y1']
+            if tl['type'] == 'resistance':
+                dash_style = 'solid' if not slope_up else 'dot'
+            else:
+                dash_style = 'solid' if slope_up else 'dot'
+
+            if extend_trendlines:
+                idx_diff = tl['idx2'] - tl['idx1']
+                slope = (tl['y2'] - tl['y1']) / idx_diff if idx_diff != 0 else 0
+                future_bars = 20
+                future_idx = len(df) - 1 + future_bars
+                y_future = tl['y2'] + slope * (future_idx - tl['idx2'])
+
+                last_date = df['Date'].iloc[-1]
+                if len(df) > 5:
+                    avg_delta = (df['Date'].iloc[-1] - df['Date'].iloc[-5]) / 4
+                    future_date = last_date + avg_delta * future_bars
+                else:
+                    future_date = last_date
+
+                fig.add_trace(go.Scatter(
+                    x=[tl['date1'], future_date],
+                    y=[tl['y1'], y_future],
+                    mode='lines',
+                    name=f"{tl['type'].title()} Trend",
+                    line=dict(color=color, width=2, dash=dash_style),
+                    showlegend=False,
+                ), row=1, col=1)
+
+                fig.add_annotation(
+                    x=future_date, y=y_future, xref='x', yref='y',
+                    text=f"{tl['type'].title()[:3]} {y_future:.2f}",
+                    showarrow=False, xanchor='left',
+                    font=dict(color=color, size=10),
+                    bgcolor='#000000'
+                )
+            else:
+                fig.add_trace(go.Scatter(
+                    x=[tl['date1'], tl['date2']],
+                    y=[tl['y1'], tl['y2']],
+                    mode='lines',
+                    name=f"{tl['type'].title()} Trend",
+                    line=dict(color=color, width=2, dash=dash_style),
+                    showlegend=False,
+                ), row=1, col=1)
+
+    if True:
+        r_color = 'rgba(255,136,0,0.6)'
+        fig.add_shape(
+            type='line', xref='x', yref='y',
+            x0=x_start, x1=x_end, y0=float(latest['High']), y1=float(latest['High']),
+            line=dict(color=r_color, width=1, dash='dot')
+        )
+        fig.add_annotation(
+            x=x_end, y=float(latest['High']), xref='x', yref='y',
+            text=f"Range High {float(latest['High']):.2f}",
+            showarrow=False, xanchor='left',
+            font=dict(color='#ff8800', size=10),
+            bgcolor='#000000'
+        )
+        fig.add_shape(
+            type='line', xref='x', yref='y',
+            x0=x_start, x1=x_end, y0=float(latest['Low']), y1=float(latest['Low']),
+            line=dict(color=r_color, width=1, dash='dot')
+        )
+        fig.add_annotation(
+            x=x_end, y=float(latest['Low']), xref='x', yref='y',
+            text=f"Range Low {float(latest['Low']):.2f}",
+            showarrow=False, xanchor='left',
+            font=dict(color='#ff8800', size=10),
+            bgcolor='#000000'
+        )
+
+    if show_sr:
+        for lvl in res_levels[-8:]:
+            fig.add_shape(type='line', xref='x', yref='y',
+                          x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
+                          line=dict(color='rgba(255,68,68,0.5)', width=1, dash='dot'))
+            fig.add_annotation(x=x_end, y=lvl['price'], xref='x', yref='y',
+                               text=f"R {lvl['price']:.2f}", showarrow=False, xanchor='left',
+                               font=dict(color='#ff4444', size=10), bgcolor='#000000')
+        for lvl in sup_levels[-8:]:
+            fig.add_shape(type='line', xref='x', yref='y',
+                          x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
+                          line=dict(color='rgba(0,255,136,0.5)', width=1, dash='dot'))
+            fig.add_annotation(x=x_end, y=lvl['price'], xref='x', yref='y',
+                               text=f"S {lvl['price']:.2f}", showarrow=False, xanchor='left',
+                               font=dict(color='#00ff88', size=10), bgcolor='#000000')
+
+    if show_smc:
+        for lvl in bsl[-2:]:
+            color = 'rgba(255,170,0,0.5)' if lvl['eq'] else 'rgba(255,102,102,0.4)'
+            dash = 'dot' if lvl['swept'] else 'dash'
+            fig.add_shape(type='line', xref='x', yref='y',
+                          x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
+                          line=dict(color=color, width=1, dash=dash))
+        for lvl in ssl[-2:]:
+            color = 'rgba(255,170,0,0.5)' if lvl['eq'] else 'rgba(102,255,102,0.4)'
+            dash = 'dot' if lvl['swept'] else 'dash'
+            fig.add_shape(type='line', xref='x', yref='y',
+                          x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
+                          line=dict(color=color, width=1, dash=dash))
+
+    if show_bos:
+        for evt in bos_events:
+            if evt['bar'] >= bars_offset:
+                idx = evt['bar'] - bars_offset
+                if idx < len(df_display):
+                    color = '#00ff88' if evt['type'] == 'BOS_UP' else '#ff4444'
+                    symbol = 'triangle-up' if evt['type'] == 'BOS_UP' else 'triangle-down'
+                    fig.add_trace(go.Scatter(x=[df_display['Date'].iloc[idx]], y=[evt['price']],
+                                             mode='markers', marker=dict(color=color, size=10, symbol=symbol),
+                                             showlegend=False), row=1, col=1)
+
+    signals = generate_signals(df, trend_score, res_levels, sup_levels, bsl, ssl, bos_events)
+
+    for sig in signals:
+        if sig['bar'] >= bars_offset:
+            idx = sig['bar'] - bars_offset
+            if idx < len(df_display):
+                sig_date = df_display['Date'].iloc[idx]
+                sig_price = sig['price']
+
+                if sig['type'] == 'BUY':
+                    fig.add_trace(go.Scatter(
+                        x=[sig_date], y=[sig_price],
+                        mode='markers+text',
+                        marker=dict(color='#00ff88', size=22, symbol='triangle-up',
+                                   line=dict(color='#000000', width=1)),
+                        text=['BUY'],
+                        textposition='bottom center',
+                        textfont=dict(color='#00ff88', size=11, family='Arial Black'),
+                        showlegend=False,
+                        hovertemplate=f"BUY<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
+                    ), row=1, col=1)
+                else:
+                    fig.add_trace(go.Scatter(
+                        x=[sig_date], y=[sig_price],
+                        mode='markers+text',
+                        marker=dict(color='#ff4444', size=22, symbol='triangle-down',
+                                   line=dict(color='#000000', width=1)),
+                        text=['SELL'],
+                        textposition='top center',
+                        textfont=dict(color='#ff4444', size=11, family='Arial Black'),
+                        showlegend=False,
+                        hovertemplate=f"SELL<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
+                    ), row=1, col=1)
+
+    for sig in (signals if show_rr_boxes else []):
+        if sig['bar'] >= bars_offset:
+            idx = sig['bar'] - bars_offset
+            if idx < len(df_display):
+                sig_date = df_display['Date'].iloc[idx]
+
+                future_bars = df_display.iloc[idx:min(idx + 50, len(df_display))]
+                is_buy = sig['type'] == 'BUY'
+
+                hit_t1 = False
+                hit_sl = False
+
+                for _, bar in future_bars.iterrows():
+                    if is_buy:
+                        if bar['High'] >= sig['t1']:
+                            hit_t1 = True
+                            break
+                        if bar['Low'] <= sig['sl']:
+                            hit_sl = True
+                            break
+                    else:
+                        if bar['Low'] <= sig['t1']:
+                            hit_t1 = True
+                            break
+                        if bar['High'] >= sig['sl']:
+                            hit_sl = True
+                            break
+
+                end_idx = min(idx + 8, len(df_display) - 1)
+                end_date = df_display['Date'].iloc[end_idx]
+
+                max_box_height = float(sig['entry']) * 0.003
+
+                if not hit_sl:
+                        fig.add_shape(
+                            type='rect',
+                            x0=sig_date, x1=end_date,
+                            y0=sig['entry'] - max_box_height,
+                            y1=sig['entry'] + max_box_height,
+                            fillcolor='rgba(0,255,136,0.10)',
+                            line=dict(color='rgba(0,255,136,0.3)', width=1),
+                            layer='below'
+                        )
+
+                if not hit_t1:
+                        fig.add_shape(
+                            type='rect',
+                            x0=sig_date, x1=end_date,
+                            y0=sig['entry'] - max_box_height,
+                            y1=sig['entry'] + max_box_height,
+                            fillcolor='rgba(255,68,68,0.10)',
+                            line=dict(color='rgba(255,68,68,0.3)', width=1),
+                            layer='below'
+                        )
+
+    fig.add_trace(go.Scatter(x=df_display['Date'], y=df_display['RSI'],
+                             name="RSI", line=dict(color='#ffaa00', width=1.5)), row=2, col=1)
+    fig.add_hline(y=70, line=dict(color='#ff4444', width=1, dash='dot'), row=2, col=1)
+    fig.add_hline(y=30, line=dict(color='#00ff88', width=1, dash='dot'), row=2, col=1)
+    fig.add_hline(y=50, line=dict(color='#666', width=1), row=2, col=1)
+
+    of_colors = ['#ff4444' if v < 0 else '#00ff88' for v in df_display['OrderFlow'].fillna(0)]
+    fig.add_trace(go.Bar(x=df_display['Date'], y=df_display['OrderFlow'],
+                         name="Order Flow", marker_color=of_colors), row=3, col=1)
+
+    fig.update_layout(height=800, template="plotly_dark",
+                      paper_bgcolor='#131722', plot_bgcolor='#131722',
+                      font=dict(color='#d1d4dc', size=11),
+                      xaxis_rangeslider_visible=False, hovermode='x unified',
+                      margin=dict(l=10, r=80, t=30, b=30),
+                      legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0))
+    fig.update_xaxes(gridcolor='#2a2e39', showgrid=True, zeroline=False)
+    fig.update_yaxes(gridcolor='#2a2e39', showgrid=True, zeroline=False, side='right')
+
+    st.plotly_chart(fig, use_container_width=True, config={
+        'scrollZoom': True, 'displayModeBar': True, 'displaylogo': False
+    })
+
+# -------------------------------------------------------------------------
+# TAB 2: SMC LIQUIDITY
+# -------------------------------------------------------------------------
+with tab2:
+    st.subheader("💧 SMC Liquidity Zones")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown("### 🔴 Buy-Side Liquidity (Above)")
+        if bsl:
+            bsl_df = pd.DataFrame(bsl[-10:])[['price', 'eq', 'swept']]
+            bsl_df['distance_%'] = ((bsl_df['price'] - float(latest['Close'])) / float(latest['Close']) * 100).round(2)
+            st.dataframe(bsl_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No BSL levels")
+    with col_b:
+        st.markdown("### 🟢 Sell-Side Liquidity (Below)")
+        if ssl:
+            ssl_df = pd.DataFrame(ssl[-10:])[['price', 'eq', 'swept']]
+            ssl_df['distance_%'] = ((float(latest['Close']) - ssl_df['price']) / float(latest['Close']) * 100).round(2)
+            st.dataframe(ssl_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No SSL levels")
+
+# -------------------------------------------------------------------------
+# TAB 3: SMART MONEY
+# -------------------------------------------------------------------------
+with tab3:
+    st.subheader("🏦 Smart Money Positioning")
+    if not NSELIB_AVAILABLE:
+        st.error("nselib not installed. Run: pip install nselib")
+    else:
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("### FII / DII Activity")
+            if st.button("🔄 Fetch FII/DII", key="fii"):
+                try:
+                    fii_df = capital_market.fii_dii_trading_activity()
+                    if fii_df is not None and not fii_df.empty:
+                        st.dataframe(fii_df, use_container_width=True, height=300)
+                    else:
+                        st.warning("No data returned")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        with col_b:
+            st.markdown("### Participant-wise OI")
+            date_input = st.date_input("Date", value=datetime.now())
+            if st.button("🔄 Fetch Participant OI", key="poi"):
+                date_str = date_input.strftime('%d-%m-%Y')
+                try:
+                    poi_df = derivatives.participant_wise_open_interest(trade_date=date_str)
+                    if poi_df is not None and not poi_df.empty:
+                        st.dataframe(poi_df, use_container_width=True, height=300)
+                    else:
+                        st.warning(f"No data for {date_str}. Try earlier date.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+
+# -------------------------------------------------------------------------
+# TAB 4: OPTION CHAIN (Upstox live)
+# -------------------------------------------------------------------------
+with tab4:
+    st.subheader("📊 Live Option Chain (BankNifty)")
+
+    if not UPSTOX_AVAILABLE:
+        st.error("❌ Upstox data module not available. Check imports.")
+    else:
+        col_a, col_b = st.columns([1, 3])
+        with col_a:
+            if st.button("🔄 Fetch Option Chain", use_container_width=True):
+                st.session_state["oc_fetch"] = True
+
+        if "oc_fetch" not in st.session_state:
+            st.session_state["oc_fetch"] = False
+
+        if st.session_state["oc_fetch"]:
+            with st.spinner("Fetching live option chain from Upstox..."):
+                spot = get_spot_quote("NSE_INDEX|Nifty Bank")
+                chain = get_option_chain("NSE_INDEX|Nifty Bank")
+
+            if spot:
+                c1, c2, c3, c4, c5 = st.columns(5)
+                c1.metric("BankNifty Spot", f"{spot['ltp']:.2f}", f"{spot.get('pct_change', 0):+.2f}%")
+                c2.metric("Open", f"{spot.get('open', 0):.2f}" if spot.get('open') else "—")
+                c3.metric("High", f"{spot.get('high', 0):.2f}" if spot.get('high') else "—")
+                c4.metric("Low", f"{spot.get('low', 0):.2f}" if spot.get('low') else "—")
+                c5.metric("Prev Close", f"{spot.get('close', 0):.2f}" if spot.get('close') else "—")
+
+            if chain is not None and not chain.empty:
+                pcr = chain.attrs.get("pcr", 0)
+                max_pain = chain.attrs.get("max_pain", 0)
+                expiry = chain.attrs.get("expiry", "—")
+                total_ce = chain.attrs.get("total_ce_oi", 0)
+                total_pe = chain.attrs.get("total_pe_oi", 0)
+
+                st.markdown("---")
+                m1, m2, m3, m4, m5 = st.columns(5)
+                m1.metric("PCR", f"{pcr:.2f}", "Bullish" if pcr > 1.2 else "Bearish" if pcr < 0.8 else "Neutral")
+                m2.metric("Max Pain", f"{max_pain:,.0f}" if max_pain else "—")
+                m3.metric("Expiry", str(expiry))
+                m4.metric("Total CE OI", f"{int(total_ce):,}")
+                m5.metric("Total PE OI", f"{int(total_pe):,}")
+
+                st.markdown("---")
+
+                spot_price = spot['ltp'] if spot else chain['strike'].median()
+                chain_filtered = chain[
+                    (chain['strike'] >= spot_price * 0.97) &
+                    (chain['strike'] <= spot_price * 1.03)
+                ].copy()
+
+                st.markdown("### Strikes Near Spot (±3%)")
+                display_cols = ['strike', 'ce_ltp', 'ce_oi', 'pe_ltp', 'pe_oi']
+                available_cols = [c for c in display_cols if c in chain_filtered.columns]
+                st.dataframe(
+                    chain_filtered[available_cols].sort_values('strike'),
+                    use_container_width=True,
+                    hide_index=True
+                )
+
+                st.markdown("---")
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown("### 🔴 Top 5 CALL OI (Resistance)")
+                    top_ce = chain.nlargest(5, 'ce_oi')[['strike', 'ce_oi', 'ce_ltp']]
+                    st.dataframe(top_ce, use_container_width=True, hide_index=True)
+                with c2:
+                    st.markdown("### 🟢 Top 5 PUT OI (Support)")
+                    top_pe = chain.nlargest(5, 'pe_oi')[['strike', 'pe_oi', 'pe_ltp']]
+                    st.dataframe(top_pe, use_container_width=True, hide_index=True)
+
+                st.caption(f"Live data via Upstox • {len(chain)} strikes • Expiry {expiry}")
+            else:
+                st.warning("⚠️ Could not fetch option chain. Check Upstox token or market hours.")
+        else:
+            st.info("👆 Click **Fetch Option Chain** to load live BankNifty data.")
+
+st.markdown("---")
+st.caption(f"Last update: {st.session_state['last_update_str']} | Data by Upstox")

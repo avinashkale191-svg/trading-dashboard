@@ -605,6 +605,7 @@ res_levels, sup_levels = find_sr(df, pivot_len)
 bsl, ssl = find_smc(df, smc_pivot)
 bos_events = find_bos(df, smc_pivot)
 trend_lines = find_trend_lines(df, trend_pivot)
+liquidity_zones = find_liquidity_zones(df, smc_pivot)
 
 latest = df.iloc[-1]
 prev = df.iloc[-2] if len(df) > 1 else latest
@@ -981,6 +982,27 @@ with tab1:
             fig.add_shape(type='line', xref='x', yref='y',
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color=color, width=1, dash=dash))
+                    # ---- Liquidity zones (order block boxes) ----
+        for z in liquidity_zones:
+            if z['idx2'] >= bars_offset:
+                z_idx1 = max(z['idx1'] - bars_offset, 0)
+                z_idx2 = min(z['idx2'] - bars_offset, len(df_display) - 1)
+                if z_idx1 >= 0 and z_idx2 < len(df_display) and z_idx1 < z_idx2:
+                    x0 = df_display['Date'].iloc[z_idx1]
+                    x1 = df_display['Date'].iloc[z_idx2]
+                    if z['type'] == 'demand':
+                        fill_c = 'rgba(0,255,136,0.10)'
+                        line_c = 'rgba(0,255,136,0.35)'
+                    else:
+                        fill_c = 'rgba(255,68,68,0.10)'
+                        line_c = 'rgba(255,68,68,0.35)'
+                    fig.add_shape(
+                        type='rect', xref='x', yref='y',
+                        x0=x0, x1=x1, y0=z['bottom'], y1=z['top'],
+                        fillcolor=fill_c,
+                        line=dict(color=line_c, width=1),
+                        layer='below'
+                    )
                     # ---- Sweep X marks ----
         for lvl in bsl:
             if lvl.get('swept') and 'sweep_bar' in lvl:

@@ -354,7 +354,85 @@ def find_trend_lines(df, pivot_len=8):
             })
 
     return trend_lines
-    
+   def find_liquidity_zones(df, pivot_len=5):
+    """Find order-block / liquidity zones (TradingView-style shaded boxes).
+    Returns list of dicts with: type, idx1, idx2, top, bottom, date1, date2."""
+    highs = df['High'].values
+    lows = df['Low'].values
+    opens = df['Open'].values
+    closes = df['Close'].values
+    dates = df['Date'].values
+
+    if len(df) < pivot_len * 3:
+        return []
+
+    zones = []
+
+    # ---- Demand zones (bullish order blocks) ----
+    # Find swing lows, then look at the 1-2 candles BEFORE it
+    for i in range(pivot_len, len(df) - pivot_len - 1):
+        if lows[i] == lows[i-pivot_len:i+pivot_len+1].min():
+            # look back 1-2 candles for the last down-candle
+            zone_top = None
+            zone_bottom = None
+            zone_idx = None
+            for back in range(1, 4):
+                j = i - back
+                if j < 0:
+                    break
+                if closes[j] < opens[j]:  # bearish candle
+                    zone_top = float(highs[j])
+                    zone_bottom = float(lows[j])
+                    zone_idx = j
+                    break
+            if zone_idx is not None:
+                # verify price moved up after (avoid dead zones)
+                move_up = (highs[min(i + 15, len(df) - 1)] - zone_top) / zone_top * 100
+                if move_up > 0.15:
+                    zones.append({
+                        'type': 'demand',
+                        'idx1': zone_idx,
+                        'idx2': min(zone_idx + 20, len(df) - 1),
+                        'top': zone_top,
+                        'bottom': zone_bottom,
+                        'date1': dates[zone_idx],
+                        'date2': dates[min(zone_idx + 20, len(df) - 1)],
+                    })
+
+    # ---- Supply zones (bearish order blocks) ----
+    # Find swing highs, then look at the 1-2 candles BEFORE it
+    for i in range(pivot_len, len(df) - pivot_len - 1):
+        if highs[i] == highs[i-pivot_len:i+pivot_len+1].max():
+            zone_top = None
+            zone_bottom = None
+            zone_idx = None
+            for back in range(1, 4):
+                j = i - back
+                if j < 0:
+                    break
+                if closes[j] > opens[j]:  # bullish candle
+                    zone_top = float(highs[j])
+                    zone_bottom = float(lows[j])
+                    zone_idx = j
+                    break
+            if zone_idx is not None:
+                move_down = (zone_bottom - lows[min(i + 15, len(df) - 1)]) / zone_bottom * 100
+                if move_down > 0.15:
+                    zones.append({
+                        'type': 'supply',
+                        'idx1': zone_idx,
+                        'idx2': min(zone_idx + 20, len(df) - 1),
+                        'top': zone_top,
+                        'bottom': zone_bottom,
+                        'date1': dates[zone_idx],
+                        'date2': dates[min(zone_idx + 20, len(df) - 1)],
+                    })
+
+    # Keep only the most recent 4 of each type
+    demand = [z for z in zones if z['type'] == 'demand'][-4:]
+    supply = [z for z in zones if z['type'] == 'supply'][-4:]
+    return demand + supply 
+       
 def calc_trend(df, sma_f, sma_s):
     if len(df) < 55:
         return "INSUFFICIENT DATA", "gray", 0

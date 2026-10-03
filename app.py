@@ -94,22 +94,28 @@ st.sidebar.caption("Examples: AAPL, ^GSPC, GC=F, BTC-USD, RELIANCE.NS")
 # --- TIMEFRAME ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("⏱️ Timeframe")
-interval = st.sidebar.selectbox("Interval", ["1m", "5m", "15m", "30m", "1h", "1d"], index=4)
-
-interval_limits = {
-    "1m":  ["1d", "5d"],
-    "5m":  ["5d", "1mo"],
-    "15m": ["5d", "1mo", "3mo"],
-    "30m": ["5d", "1mo", "3mo"],
-    "1h":  ["5d", "1mo", "3mo", "6mo", "1y", "2y"],
-    "1d":  ["1mo", "3mo", "6mo", "1y", "2y", "5y", "10y"],
+# Auto-config per interval (like TradingView)
+INTERVAL_CONFIG = {
+    "1m":  {"period": "1d",  "bars": 375, "sr_pivot": 20, "smc_pivot": 10, "tl_pivot": 15},
+    "5m":  {"period": "5d",  "bars": 375, "sr_pivot": 15, "smc_pivot": 8,  "tl_pivot": 12},
+    "15m": {"period": "1mo", "bars": 375, "sr_pivot": 12, "smc_pivot": 6,  "tl_pivot": 10},
+    "30m": {"period": "1mo", "bars": 375, "sr_pivot": 10, "smc_pivot": 5,  "tl_pivot": 8},
+    "1h":  {"period": "3mo", "bars": 375, "sr_pivot": 8,  "smc_pivot": 5,  "tl_pivot": 8},
+    "1d":  {"period": "1y",  "bars": 375, "sr_pivot": 5,  "smc_pivot": 3,  "tl_pivot": 5},
 }
-available_periods = interval_limits.get(interval, ["1mo", "3mo"])
-default_period_idx = min(1, len(available_periods) - 1)
-period = st.sidebar.selectbox("Period", available_periods, index=default_period_idx)
-st.sidebar.caption(f"✅ Valid: {', '.join(available_periods)}")
 
-show_last_n = st.sidebar.slider("Bars to show (zoom)", 30, 500, 150, step=10)
+interval = st.sidebar.selectbox("Interval", ["1m", "5m", "15m", "30m", "1h", "1d"], index=3)
+
+cfg = INTERVAL_CONFIG[interval]
+
+period = st.sidebar.selectbox(
+    "Period",
+    [cfg["period"]] + [p for p in ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y"] if p != cfg["period"]],
+    index=0,
+)
+st.sidebar.caption(f"📌 Auto for {interval}: {cfg['period']}")
+
+show_last_n = st.sidebar.slider("Bars to show (zoom)", 30, 1000, cfg["bars"], step=25)
 
 # --- INDICATORS (AUTO-ADJUST BY TIMEFRAME) ---
 st.sidebar.markdown("---")
@@ -118,43 +124,30 @@ rsi_period = st.sidebar.slider("RSI Period", 5, 30, 14)
 sma_fast = st.sidebar.slider("SMA Fast", 5, 50, 20)
 sma_slow = st.sidebar.slider("SMA Slow", 20, 200, 50)
 
-# Auto-adjust S/R pivot by timeframe
-auto_sr_pivot = {
-    "1m": 20, "5m": 15, "15m": 12, "30m": 10, "1h": 8, "1d": 5
-}.get(interval, 10)
-
+# Pivot sliders (auto-configured by interval)
 pivot_len = st.sidebar.slider(
     "S/R Pivot Length",
     3, 30,
-    value=auto_sr_pivot,
+    value=cfg["sr_pivot"],
     help="Auto-set based on timeframe. Larger = fewer, cleaner levels."
 )
-st.sidebar.caption(f"📌 Auto for {interval}: {auto_sr_pivot}")
-
-# Auto-adjust SMC pivot by timeframe
-auto_smc_pivot = {
-    "1m": 10, "5m": 8, "15m": 6, "30m": 5, "1h": 5, "1d": 3
-}.get(interval, 5)
+st.sidebar.caption(f"📌 Auto for {interval}: {cfg['sr_pivot']}")
 
 smc_pivot = st.sidebar.slider(
     "SMC Pivot Length",
     3, 30,
-    value=auto_smc_pivot,
+    value=cfg["smc_pivot"],
     help="Auto-set based on timeframe."
 )
-st.sidebar.caption(f"📌 Auto for {interval}: {auto_smc_pivot}")
-
-auto_trend_pivot = {
-    "1m": 5, "5m": 5, "15m": 6, "30m": 6, "1h": 8, "1d": 10
-}.get(interval, 8)
+st.sidebar.caption(f"📌 Auto for {interval}: {cfg['smc_pivot']}")
 
 trend_pivot = st.sidebar.slider(
     "Trend Line Pivot Length",
     3, 30,
-    value=auto_trend_pivot,
+    value=cfg["tl_pivot"],
     help="Auto-set based on timeframe."
 )
-st.sidebar.caption(f"📌 Auto for {interval}: {auto_trend_pivot}")
+st.sidebar.caption(f"📌 Auto for {interval}: {cfg['tl_pivot']}")
 
 # --- OVERLAYS ---
 st.sidebar.markdown("---")

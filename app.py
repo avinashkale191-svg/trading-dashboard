@@ -354,7 +354,7 @@ def find_trend_lines(df, pivot_len=8):
             })
 
     return trend_lines
-   def find_liquidity_zones(df, pivot_len=5):
+def find_liquidity_zones(df, pivot_len=5):
     """Find order-block / liquidity zones (TradingView-style shaded boxes).
     Returns list of dicts with: type, idx1, idx2, top, bottom, date1, date2."""
     highs = df['High'].values

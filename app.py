@@ -300,7 +300,7 @@ def find_bos(df, pivot_len=5):
     return events[-10:]
 
 def find_trend_lines(df, pivot_len=8):
-    """Auto trend lines (diagonal, TradingView-style)."""
+    """Auto trend lines — TradingView-style sloped lines."""
     highs = df['High'].values
     lows = df['Low'].values
     dates = df['Date'].values
@@ -308,7 +308,6 @@ def find_trend_lines(df, pivot_len=8):
     if len(df) < pivot_len * 3:
         return []
 
-    # ---- Collect swing pivots ----
     swing_highs = []
     swing_lows = []
     for i in range(pivot_len, len(df) - pivot_len):
@@ -319,53 +318,46 @@ def find_trend_lines(df, pivot_len=8):
 
     trend_lines = []
 
-    def _build(pivots, kind):
-        """Connect pivot pairs. Keep diagonal, long, non-overlapping lines."""
-        out = []
-        n = len(pivots)
-        if n < 2:
-            return out
-        candidates = []
-        for a in range(n - 1):
-            for b in range(a + 1, n):
-                p1 = pivots[a]
-                p2 = pivots[b]
-                time_dist = p2['idx'] - p1['idx']
-                if time_dist < 10:
-                    continue
-                price_dist = abs(p2['price'] - p1['price'])
-                slope = (p2['price'] - p1['price']) / time_dist
-                # require meaningful slope relative to price
-                if price_dist < p1['price'] * 0.003:
-                    continue
-                score = time_dist * abs(slope)
-                candidates.append({
-                    'type': kind,
-                    'idx1': p1['idx'], 'y1': p1['price'], 'date1': p1['date'],
-                    'idx2': p2['idx'], 'y2': p2['price'], 'date2': p2['date'],
-                    '_score': score,
-                })
-        candidates.sort(key=lambda c: c['_score'], reverse=True)
-        for c in candidates:
-            if len(out) >= 5:
-                break
-            # skip if too similar to an already-picked line
-            dup = False
-            for o in out:
-                mid_c = (c['y1'] + c['y2']) / 2
-                mid_o = (o['y1'] + o['y2']) / 2
-                if abs(mid_c - mid_o) < (mid_c * 0.0015):
-                    dup = True
-                    break
-            if not dup:
-                out.append(c)
-        return out
+    # ---- Down-trend resistance: topmost swing high → next lower high ----
+    if len(swing_highs) >= 2:
+        h_sorted = sorted(swing_highs, key=lambda x: x['idx'])
+        best = None
+        for a in range(len(h_sorted) - 1):
+            for b in range(a + 1, len(h_sorted)):
+                p1 = h_sorted[a]
+                p2 = h_sorted[b]
+                if p2['price'] < p1['price'] and (p2['idx'] - p1['idx']) >= 15:
+                    span = p2['idx'] - p1['idx']
+                    if best is None or span > best['span']:
+                        best = {'p1': p1, 'p2': p2, 'span': span}
+        if best:
+            trend_lines.append({
+                'type': 'resistance',
+                'idx1': best['p1']['idx'], 'y1': best['p1']['price'], 'date1': best['p1']['date'],
+                'idx2': best['p2']['idx'], 'y2': best['p2']['price'], 'date2': best['p2']['date'],
+            })
 
-    trend_lines.extend(_build(swing_highs, 'resistance'))
-    trend_lines.extend(_build(swing_lows, 'support'))
+    # ---- Up-trend support: bottom-most swing low → next higher low ----
+    if len(swing_lows) >= 2:
+        l_sorted = sorted(swing_lows, key=lambda x: x['idx'])
+        best = None
+        for a in range(len(l_sorted) - 1):
+            for b in range(a + 1, len(l_sorted)):
+                p1 = l_sorted[a]
+                p2 = l_sorted[b]
+                if p2['price'] > p1['price'] and (p2['idx'] - p1['idx']) >= 15:
+                    span = p2['idx'] - p1['idx']
+                    if best is None or span > best['span']:
+                        best = {'p1': p1, 'p2': p2, 'span': span}
+        if best:
+            trend_lines.append({
+                'type': 'support',
+                'idx1': best['p1']['idx'], 'y1': best['p1']['price'], 'date1': best['p1']['date'],
+                'idx2': best['p2']['idx'], 'y2': best['p2']['price'], 'date2': best['p2']['date'],
+            })
 
     return trend_lines
-
+    
 def calc_trend(df, sma_f, sma_s):
     if len(df) < 55:
         return "INSUFFICIENT DATA", "gray", 0

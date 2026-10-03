@@ -300,17 +300,17 @@ def find_bos(df, pivot_len=5):
     return events[-10:]
 
 def find_trend_lines(df, pivot_len=8):
-    """Auto trend lines. Works on any timeframe."""
+    """Auto trend lines (diagonal, TradingView-style)."""
     highs = df['High'].values
     lows = df['Low'].values
     dates = df['Date'].values
 
-    swing_highs = []
-    swing_lows = []
-
     if len(df) < pivot_len * 3:
         return []
 
+    # ---- Collect swing pivots ----
+    swing_highs = []
+    swing_lows = []
     for i in range(pivot_len, len(df) - pivot_len):
         if highs[i] == highs[i-pivot_len:i+pivot_len+1].max():
             swing_highs.append({'idx': i, 'price': float(highs[i]), 'date': dates[i]})
@@ -319,44 +319,51 @@ def find_trend_lines(df, pivot_len=8):
 
     trend_lines = []
 
-        # ---- Resistance trend lines (up to 5) ----
-    if len(swing_highs) >= 2:
-        _last_picked_h = None
-        for offset in range(0, min(6, len(swing_highs) - 1)):
-            h1 = swing_highs[-(2 + offset)]
-            h2 = swing_highs[-(1 + offset)]
-            if abs(h2['idx'] - h1['idx']) < 3:
-                continue
-            if _last_picked_h is not None and abs(h2['price'] - _last_picked_h) < (h2['price'] * 0.002):
-                continue
-            trend_lines.append({
-                'type': 'resistance',
-                'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
-                'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
-            })
-            _last_picked_h = h2['price']
-            if sum(1 for t in trend_lines if t['type'] == 'resistance') >= 5:
+    def _build(pivots, kind):
+        """Connect pivot pairs. Keep diagonal, long, non-overlapping lines."""
+        out = []
+        n = len(pivots)
+        if n < 2:
+            return out
+        candidates = []
+        for a in range(n - 1):
+            for b in range(a + 1, n):
+                p1 = pivots[a]
+                p2 = pivots[b]
+                time_dist = p2['idx'] - p1['idx']
+                if time_dist < 10:
+                    continue
+                price_dist = abs(p2['price'] - p1['price'])
+                slope = (p2['price'] - p1['price']) / time_dist
+                # require meaningful slope relative to price
+                if price_dist < p1['price'] * 0.003:
+                    continue
+                score = time_dist * abs(slope)
+                candidates.append({
+                    'type': kind,
+                    'idx1': p1['idx'], 'y1': p1['price'], 'date1': p1['date'],
+                    'idx2': p2['idx'], 'y2': p2['price'], 'date2': p2['date'],
+                    '_score': score,
+                })
+        candidates.sort(key=lambda c: c['_score'], reverse=True)
+        for c in candidates:
+            if len(out) >= 5:
                 break
+            # skip if too similar to an already-picked line
+            dup = False
+            for o in out:
+                mid_c = (c['y1'] + c['y2']) / 2
+                mid_o = (o['y1'] + o['y2']) / 2
+                if abs(mid_c - mid_o) < (mid_c * 0.0015):
+                    dup = True
+                    break
+            if not dup:
+                out.append(c)
+        return out
 
-    # ---- Support trend lines (up to 5) ----
-    if len(swing_lows) >= 2:
-        _last_picked_l = None
-        for offset in range(0, min(6, len(swing_lows) - 1)):
-            l1 = swing_lows[-(2 + offset)]
-            l2 = swing_lows[-(1 + offset)]
-            if abs(l2['idx'] - l1['idx']) < 3:
-                continue
-            if _last_picked_l is not None and abs(l1['price'] - _last_picked_l) < (l1['price'] * 0.002):
-                continue
-            trend_lines.append({
-                'type': 'support',
-                'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
-                'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
-            })
-            _last_picked_l = l1['price']
-            if sum(1 for t in trend_lines if t['type'] == 'support') >= 5:
-                break
-                
+    trend_lines.extend(_build(swing_highs, 'resistance'))
+    trend_lines.extend(_build(swing_lows, 'support'))
+
     return trend_lines
 
 def calc_trend(df, sma_f, sma_s):

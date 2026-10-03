@@ -300,7 +300,10 @@ def find_bos(df, pivot_len=5):
     return events[-10:]
 
 def find_trend_lines(df, pivot_len=8):
-    """Auto trend lines — TradingView-style sloped lines."""
+    """Auto trend lines — TradingView-style.
+    Connects ADJACENT swing pivots in pairs (up to 3 pairs).
+    Adjacent pivots at different prices/times = diagonal lines.
+    """
     highs = df['High'].values
     lows = df['Low'].values
     dates = df['Date'].values
@@ -317,43 +320,44 @@ def find_trend_lines(df, pivot_len=8):
             swing_lows.append({'idx': i, 'price': float(lows[i]), 'date': dates[i]})
 
     trend_lines = []
+    max_pairs = 3
 
-    # ---- Down-trend resistance: topmost swing high → next lower high ----
+    # ---- Resistance: connect ADJACENT swing highs (newest-first) ----
     if len(swing_highs) >= 2:
-        h_sorted = sorted(swing_highs, key=lambda x: x['idx'])
-        best = None
-        for a in range(len(h_sorted) - 1):
-            for b in range(a + 1, len(h_sorted)):
-                p1 = h_sorted[a]
-                p2 = h_sorted[b]
-                if p2['price'] < p1['price'] and (p2['idx'] - p1['idx']) >= 15:
-                    span = p2['idx'] - p1['idx']
-                    if best is None or span > best['span']:
-                        best = {'p1': p1, 'p2': p2, 'span': span}
-        if best:
+        pairs = min(max_pairs, len(swing_highs) - 1)
+        for p in range(pairs):
+            i1 = len(swing_highs) - 2 - p
+            i2 = len(swing_highs) - 1 - p
+            h1 = swing_highs[i1]
+            h2 = swing_highs[i2]
+            if abs(h2['idx'] - h1['idx']) < 3:
+                continue
             trend_lines.append({
                 'type': 'resistance',
-                'idx1': best['p1']['idx'], 'y1': best['p1']['price'], 'date1': best['p1']['date'],
-                'idx2': best['p2']['idx'], 'y2': best['p2']['price'], 'date2': best['p2']['date'],
+                'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
+                'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
+                'is_down': h2['price'] < h1['price'],
+                'width': 2 if p == 0 else 1,
+                'opacity': 0 if p == 0 else 20 if p == 1 else 40,
             })
 
-    # ---- Up-trend support: bottom-most swing low → next higher low ----
+    # ---- Support: connect ADJACENT swing lows (newest-first) ----
     if len(swing_lows) >= 2:
-        l_sorted = sorted(swing_lows, key=lambda x: x['idx'])
-        best = None
-        for a in range(len(l_sorted) - 1):
-            for b in range(a + 1, len(l_sorted)):
-                p1 = l_sorted[a]
-                p2 = l_sorted[b]
-                if p2['price'] > p1['price'] and (p2['idx'] - p1['idx']) >= 15:
-                    span = p2['idx'] - p1['idx']
-                    if best is None or span > best['span']:
-                        best = {'p1': p1, 'p2': p2, 'span': span}
-        if best:
+        pairs = min(max_pairs, len(swing_lows) - 1)
+        for p in range(pairs):
+            i1 = len(swing_lows) - 2 - p
+            i2 = len(swing_lows) - 1 - p
+            l1 = swing_lows[i1]
+            l2 = swing_lows[i2]
+            if abs(l2['idx'] - l1['idx']) < 3:
+                continue
             trend_lines.append({
                 'type': 'support',
-                'idx1': best['p1']['idx'], 'y1': best['p1']['price'], 'date1': best['p1']['date'],
-                'idx2': best['p2']['idx'], 'y2': best['p2']['price'], 'date2': best['p2']['date'],
+                'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
+                'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
+                'is_up': l2['price'] > l1['price'],
+                'width': 2 if p == 0 else 1,
+                'opacity': 0 if p == 0 else 20 if p == 1 else 40,
             })
 
     return trend_lines

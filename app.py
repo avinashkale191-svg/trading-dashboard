@@ -945,7 +945,7 @@ with tab1:
                     color = '#00ff88' if evt['type'] == 'BOS_UP' else '#ff4444'
                     symbol = 'triangle-up' if evt['type'] == 'BOS_UP' else 'triangle-down'
                     fig.add_trace(go.Scatter(x=[df_display['Date'].iloc[idx]], y=[evt['price']],
-                                             mode='markers', marker=dict(color=color, size=10, symbol=symbol),
+                                             mode='markers', marker=dict(color=color, size=14, symbol=symbol),
                                              showlegend=False), row=1, col=1)
 
     signals = generate_signals(df, trend_score, res_levels, sup_levels, bsl, ssl, bos_events)
@@ -961,11 +961,11 @@ with tab1:
                     fig.add_trace(go.Scatter(
                         x=[sig_date], y=[sig_price],
                         mode='markers+text',
-                        marker=dict(color='#00ff88', size=22, symbol='triangle-up',
+                        marker=dict(color='#00ff88', size=28, symbol='triangle-up',
                                    line=dict(color='#000000', width=1)),
                         text=['BUY'],
                         textposition='bottom center',
-                        textfont=dict(color='#00ff88', size=11, family='Arial Black'),
+                        textfont=dict(color='#00ff88', size=13, family='Arial Black'),
                         showlegend=False,
                         hovertemplate=f"BUY<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
                     ), row=1, col=1)
@@ -973,11 +973,11 @@ with tab1:
                     fig.add_trace(go.Scatter(
                         x=[sig_date], y=[sig_price],
                         mode='markers+text',
-                        marker=dict(color='#ff4444', size=22, symbol='triangle-down',
+                        marker=dict(color='#ff4444', size=28, symbol='triangle-down',
                                    line=dict(color='#000000', width=1)),
                         text=['SELL'],
                         textposition='top center',
-                        textfont=dict(color='#ff4444', size=11, family='Arial Black'),
+                        textfont=dict(color='#ff4444', size=13, family='Arial Black'),
                         showlegend=False,
                         hovertemplate=f"SELL<br>Entry: {sig['entry']:.2f}<br>SL: {sig['sl']:.2f}<br>T1: {sig['t1']:.2f}<extra></extra>"
                     ), row=1, col=1)

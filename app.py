@@ -925,7 +925,6 @@ with tab1:
                     showlegend=False,
                 ), row=1, col=1)
 
-        if True:
         # Range High/Low = rolling max/min over last N bars (like TradingView)
         _rl_lookback = 50
         _range_high = float(df['High'].iloc[-_rl_lookback:].max())

@@ -312,7 +312,7 @@ def find_trend_lines(df, pivot_len=8):
             swing_lows.append({'idx': i, 'price': float(lows[i]), 'date': dates[i]})
 
     trend_lines = []
-    max_pairs = 3
+    max_pairs = 2
 
     # ---- Resistance: connect ADJACENT swing highs (newest-first) ----
     if len(swing_highs) >= 2:
@@ -427,9 +427,9 @@ def find_liquidity_zones(df, pivot_len=5):
                         'date2': dates[min(zone_idx + 20, len(df) - 1)],
                     })
 
-    # Keep only the most recent 4 of each type
-    demand = [z for z in zones if z['type'] == 'demand'][-4:]
-    supply = [z for z in zones if z['type'] == 'supply'][-4:]
+    # Keep only the most recent 2 of each type
+    demand = [z for z in zones if z['type'] == 'demand'][-2:]
+    supply = [z for z in zones if z['type'] == 'supply'][-2:]
     return demand + supply 
        
 def calc_trend(df, sma_f, sma_s):
@@ -953,14 +953,14 @@ with tab1:
         )
 
     if show_sr:
-        for lvl in res_levels[-8:]:
+        for lvl in res_levels[-5:]:
             fig.add_shape(type='line', xref='x', yref='y',
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color='rgba(255,68,68,0.5)', width=1, dash='dot'))
             fig.add_annotation(x=x_end, y=lvl['price'], xref='x', yref='y',
                                text=f"R {lvl['price']:.2f}", showarrow=False, xanchor='left',
                                font=dict(color='#ff4444', size=10), bgcolor='#000000')
-        for lvl in sup_levels[-8:]:
+        for lvl in sup_levels[-5:]:
             fig.add_shape(type='line', xref='x', yref='y',
                           x0=x_start, x1=x_end, y0=lvl['price'], y1=lvl['price'],
                           line=dict(color='rgba(0,255,136,0.5)', width=1, dash='dot'))

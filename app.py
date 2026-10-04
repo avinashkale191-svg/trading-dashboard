@@ -96,14 +96,13 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("⏱️ Timeframe")
 # Auto-config per interval (like TradingView)
 INTERVAL_CONFIG = {
-    "1m":  {"period": "1d",  "bars": 375, "sr_pivot": 20, "smc_pivot": 10, "tl_pivot": 15},
-    "5m":  {"period": "5d",  "bars": 375, "sr_pivot": 15, "smc_pivot": 8,  "tl_pivot": 12},
-    "15m": {"period": "1mo", "bars": 375, "sr_pivot": 12, "smc_pivot": 6,  "tl_pivot": 10},
-    "30m": {"period": "1mo", "bars": 375, "sr_pivot": 10, "smc_pivot": 5,  "tl_pivot": 8},
-    "1h":  {"period": "3mo", "bars": 375, "sr_pivot": 8,  "smc_pivot": 5,  "tl_pivot": 8},
-    "1d":  {"period": "1y",  "bars": 375, "sr_pivot": 5,  "smc_pivot": 3,  "tl_pivot": 5},
+    "1m":  {"period": "1d",  "bars": 200, "sr_pivot": 10, "smc_pivot": 5, "tl_pivot": 8},
+    "5m":  {"period": "5d",  "bars": 200, "sr_pivot": 10, "smc_pivot": 5, "tl_pivot": 8},
+    "15m": {"period": "1mo", "bars": 200, "sr_pivot": 10, "smc_pivot": 5, "tl_pivot": 8},
+    "30m": {"period": "1mo", "bars": 200, "sr_pivot": 10, "smc_pivot": 5, "tl_pivot": 8},
+    "1h":  {"period": "3mo", "bars": 200, "sr_pivot": 10, "smc_pivot": 5, "tl_pivot": 8},
+    "1d":  {"period": "1y",  "bars": 200, "sr_pivot": 10, "smc_pivot": 5, "tl_pivot": 8},
 }
-
 interval = st.sidebar.selectbox("Interval", ["1m", "5m", "15m", "30m", "1h", "1d"], index=3)
 
 cfg = INTERVAL_CONFIG[interval]

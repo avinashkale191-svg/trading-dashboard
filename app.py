@@ -293,8 +293,7 @@ def find_bos(df, pivot_len=5):
 
 def find_trend_lines(df, pivot_len=8):
     """Auto trend lines — TradingView-style.
-    Picks MAJOR swing extremes that form the actual market trend.
-    Returns 1-2 resistance + 1-2 support lines (long, diagonal).
+    Connects ADJACENT swing pivots in pairs (up to 2 pairs).
     """
     highs = df['High'].values
     lows = df['Low'].values
@@ -312,90 +311,41 @@ def find_trend_lines(df, pivot_len=8):
             swing_lows.append({'idx': i, 'price': float(lows[i]), 'date': dates[i]})
 
     trend_lines = []
+    max_pairs = 2
 
-    # ---- Resistance: connect MOST PROMINENT swing highs ----
+    # ---- Resistance: connect ADJACENT swing highs (newest-first) ----
     if len(swing_highs) >= 2:
-        # Sort by "prominence" = distance in time * price change
-        pairs = []
-        for a in range(len(swing_highs) - 1):
-            for b in range(a + 1, len(swing_highs)):
-                p1 = swing_highs[a]
-                p2 = swing_highs[b]
-                span = p2['idx'] - p1['idx']
-                if span < 20:
-                    continue
-                price_chg = abs(p2['price'] - p1['price'])
-                if price_chg < p1['price'] * 0.002:
-                    continue
-                score = span * price_chg
-                pairs.append({'score': score, 'p1': p1, 'p2': p2})
-        pairs.sort(key=lambda x: x['score'], reverse=True)
-        picked = 0
-        for cand in pairs:
-            if picked >= 2:
-                break
-            # avoid overlapping with already-picked
-            is_dup = False
-            for existing in trend_lines:
-                if existing['type'] != 'resistance':
-                    continue
-                mid1 = (cand['p1']['price'] + cand['p2']['price']) / 2
-                mid2 = (existing['y1'] + existing['y2']) / 2
-                if abs(mid1 - mid2) < mid1 * 0.002:
-                    is_dup = True
-                    break
-            if is_dup:
+        pairs = min(max_pairs, len(swing_highs) - 1)
+        for p in range(pairs):
+            i1 = len(swing_highs) - 2 - p
+            i2 = len(swing_highs) - 1 - p
+            h1 = swing_highs[i1]
+            h2 = swing_highs[i2]
+            if abs(h2['idx'] - h1['idx']) < 3:
                 continue
-            p1 = cand['p1']
-            p2 = cand['p2']
             trend_lines.append({
                 'type': 'resistance',
-                'idx1': p1['idx'], 'y1': p1['price'], 'date1': p1['date'],
-                'idx2': p2['idx'], 'y2': p2['price'], 'date2': p2['date'],
-                'width': 2 if picked == 0 else 1,
+                'idx1': h1['idx'], 'y1': h1['price'], 'date1': h1['date'],
+                'idx2': h2['idx'], 'y2': h2['price'], 'date2': h2['date'],
+                'width': 2 if p == 0 else 1,
             })
-            picked += 1
 
-    # ---- Support: connect MOST PROMINENT swing lows ----
+    # ---- Support: connect ADJACENT swing lows (newest-first) ----
     if len(swing_lows) >= 2:
-        pairs = []
-        for a in range(len(swing_lows) - 1):
-            for b in range(a + 1, len(swing_lows)):
-                p1 = swing_lows[a]
-                p2 = swing_lows[b]
-                span = p2['idx'] - p1['idx']
-                if span < 20:
-                    continue
-                price_chg = abs(p2['price'] - p1['price'])
-                if price_chg < p1['price'] * 0.002:
-                    continue
-                score = span * price_chg
-                pairs.append({'score': score, 'p1': p1, 'p2': p2})
-        pairs.sort(key=lambda x: x['score'], reverse=True)
-        picked = 0
-        for cand in pairs:
-            if picked >= 2:
-                break
-            is_dup = False
-            for existing in trend_lines:
-                if existing['type'] != 'support':
-                    continue
-                mid1 = (cand['p1']['price'] + cand['p2']['price']) / 2
-                mid2 = (existing['y1'] + existing['y2']) / 2
-                if abs(mid1 - mid2) < mid1 * 0.002:
-                    is_dup = True
-                    break
-            if is_dup:
+        pairs = min(max_pairs, len(swing_lows) - 1)
+        for p in range(pairs):
+            i1 = len(swing_lows) - 2 - p
+            i2 = len(swing_lows) - 1 - p
+            l1 = swing_lows[i1]
+            l2 = swing_lows[i2]
+            if abs(l2['idx'] - l1['idx']) < 3:
                 continue
-            p1 = cand['p1']
-            p2 = cand['p2']
             trend_lines.append({
                 'type': 'support',
-                'idx1': p1['idx'], 'y1': p1['price'], 'date1': p1['date'],
-                'idx2': p2['idx'], 'y2': p2['price'], 'date2': p2['date'],
-                'width': 2 if picked == 0 else 1,
+                'idx1': l1['idx'], 'y1': l1['price'], 'date1': l1['date'],
+                'idx2': l2['idx'], 'y2': l2['price'], 'date2': l2['date'],
+                'width': 2 if p == 0 else 1,
             })
-            picked += 1
 
     return trend_lines
     
@@ -934,7 +884,7 @@ with tab1:
             if extend_trendlines:
                 idx_diff = tl['idx2'] - tl['idx1']
                 slope = (tl['y2'] - tl['y1']) / idx_diff if idx_diff != 0 else 0
-                future_bars = show_last_n
+                future_bars = 20
                 future_idx = len(df) - 1 + future_bars
                 y_future = tl['y2'] + slope * (future_idx - tl['idx2'])
 

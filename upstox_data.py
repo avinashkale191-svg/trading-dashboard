@@ -253,40 +253,53 @@ def fetch_candles(symbol="NSE_INDEX|Nifty Bank", interval="1m", days=5):
         df = df[["Date", "Open", "High", "Low", "Close", "Volume"]]
         return df
 
-    # ---- HISTORICAL endpoint FIRST (always has data) ----
+        # ---- Fetch HISTORICAL + INTRADAY and merge ----
+    hist_df = None
+    intra_df = None
+
+    # 1. HISTORICAL (for older days context)
     from_date_obj = datetime.now() - pd.Timedelta(days=days)
     from_date = from_date_obj.strftime("%Y-%m-%d")
     to_date = datetime.now().strftime("%Y-%m-%d")
 
     hist_url = f"{BASE_URL}/historical-candle/{encoded_symbol}/{upstox_interval}/{to_date}/{from_date}"
-
     try:
         r = requests.get(hist_url, headers=get_headers(), timeout=15)
         if r.status_code == 200:
-            df = _parse(r.json())
-            if df is not None and not df.empty:
-                return df
-            print(f"Historical returned empty for {encoded_symbol}")
+            hist_df = _parse(r.json())
+            if hist_df is None or hist_df.empty:
+                hist_df = None
+                print(f"Historical returned empty for {encoded_symbol}")
         else:
             print(f"Historical error: {r.status_code} - {r.text[:200]}")
     except Exception as e:
         print(f"Historical exception: {e}")
 
-    # ---- Fallback: INTRADAY endpoint (live today) ----
+    # 2. INTRADAY (today's live candles)
+    intraday_url = f"{BASE_URL}/historical-candle/intraday/{encoded_symbol}/{upstox_interval}"
     try:
-        intraday_url = f"{BASE_URL}/historical-candle/intraday/{encoded_symbol}/{upstox_interval}"
         r = requests.get(intraday_url, headers=get_headers(), timeout=15)
         if r.status_code == 200:
-            df = _parse(r.json())
-            if df is not None and not df.empty:
-                return df
-            print(f"Intraday returned empty for {encoded_symbol}")
+            intra_df = _parse(r.json())
+            if intra_df is None or intra_df.empty:
+                intra_df = None
         else:
             print(f"Intraday error: {r.status_code} - {r.text[:200]}")
     except Exception as e:
         print(f"Intraday exception: {e}")
 
-    return None    
+    # 3. Merge: historical + today's intraday (deduplicate by Date)
+    if hist_df is not None and intra_df is not None:
+        merged = pd.concat([hist_df, intra_df], ignore_index=True)
+        merged = merged.drop_duplicates(subset=['Date']).sort_values('Date').reset_index(drop=True)
+        return merged
+    elif intra_df is not None:
+        return intra_df
+    elif hist_df is not None:
+        return hist_df
+    else:
+        return None
+        
 # =========================================================================
 # 5. TEST
 # =========================================================================

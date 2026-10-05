@@ -6,4 +6,3 @@ plotly
 yfinance
 nselib
 nsefin
-streamlit-autorefresh

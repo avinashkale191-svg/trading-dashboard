@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -51,15 +52,7 @@ if 'last_update_str' not in st.session_state:
 st.sidebar.caption(f"Last update: **{st.session_state['last_update_str']}**")
 
 if auto_refresh:
-    st.markdown(
-        """
-        <script>
-        setTimeout(function() { window.location.reload(); }, 15000);
-        </script>
-        """,
-        unsafe_allow_html=True
-    )
-
+    st_autorefresh(interval=15000, key="data_refresh")
 st.sidebar.markdown("---")
 
 # --- ASSET DROPDOWN ---
